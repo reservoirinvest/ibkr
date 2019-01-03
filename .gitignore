@@ -1,0 +1,7 @@
+z*
+z*.*
+*.log
+.ipynb_checkpoints
+venv
+__pycache__
+.idea
