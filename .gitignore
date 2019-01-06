@@ -5,3 +5,4 @@ z*.*
 venv
 __pycache__
 .idea
+*~
