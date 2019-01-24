@@ -1,6 +1,28 @@
-# Objectives
+# Objective
 
 * Have a framework for analysis and automation of trades in Interactive Brokers
+
+# Goals
+1) The framework should be able to:
+* Scan - build the target scrips, extract underlyings, extract options and pickle
+* Manage 
+    * manual - decide the _strategy_, close (harvest) trades, open (sow) new trades
+    * auto - high frequency automatic trading with error management and exception management
+* Analyze - visual tool to quickly assemble data for analysis and decision making
+
+2) Use best programming best practice
+    * use native IBKR information, with no/little dependancies from external sites/sources
+
+3) Have technical capability to do everything in a cloud infrastructure, with monitoring on smart phone
+
+# Strategy
+## Closing
+1) Dyamically determine the closing price percentage for short options based on dte
+2) Determine harvest price from minimum of determined closing price and marketprice
+
+## Opening
+### Puts
+
 
 # Markets
 * nse - for India
@@ -29,8 +51,8 @@
 ## 02_nse_manage
 
 * Reads the account summary
-* Harvests open option positions from a linest curve
-* Prepares to Sow
+* _Harvests_ open option positions from a linest curve
+* Prepares to _Sow_
    * Checks available funds
    * Makes a *blacklist* (existing positions which have run over position limit)
    * Focuses on Puts
