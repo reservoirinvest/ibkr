@@ -17,7 +17,7 @@
    
 ## Underlying
 * Filename: `_`underlying.pkl
-* Fields: xtime, symbol, strikes, expiries, divrate, undPrice, lot, margin
+* Fields: xtime, symbol, undPrice, lot, margin, stdev, divrate
 
 ## Options
 Stores the strikes and expiries of qualified options
