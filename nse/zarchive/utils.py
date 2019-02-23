@@ -96,7 +96,7 @@ def getprice(ib, contract):
     Arg:
        (ib) as object for keeping ibkr connection
        (contract) as object
-    Returns: close priceas float'''
+    Returns: close prices float'''
     
     bars = ib.reqHistoricalData(
             contract,
