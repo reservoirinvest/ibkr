@@ -1,8 +1,8 @@
-from ib_insync import util
+from ib_insync import util, Order
 import pandas as pd
 import numpy as np
 import datetime
-from math import sqrt, exp, log, erf
+from math import sqrt, exp, log, erf, floor, log10
 
 # gets days to expiry from now onwards
 def get_dte(dt):
@@ -37,7 +37,7 @@ def get_prec(v, base):
        (v) as value needing precision in float
        (base) as the base value e.g. 0.05'''
     
-    return round(round((v)/ base) * base, -int(math.floor(math.log10(base))))
+    return round(round((v)/ base) * base, -int(floor(log10(base))))
 
 # group options based on right, symbol and strike.
 # this makes it easy to delete unwanted ones on inspection.
@@ -63,7 +63,7 @@ def grp_opts(df):
     return df
 
 # get the option margin for shorts
-def short_opt_margin(contract, mult=1):
+def short_opt_margin(ib, contract, mult=1):
     '''Gets margin of a single option contract
     Args:
         (contract) object as the option contract
