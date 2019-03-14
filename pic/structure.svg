@@ -1,0 +1,55 @@
+<svg width="580" height="480" xmlns="http://www.w3.org/2000/svg">
+ <!-- Created with Method Draw - http://github.com/duopixel/Method-Draw/ -->
+
+ <g>
+  <title>background</title>
+  <rect fill="#e5e5e5" id="canvas_background" height="482" width="582" y="-1" x="-1"/>
+  <g display="none" id="canvasGrid">
+   <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%" id="svg_4"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_1" y="33.4375" x="227.5" stroke-width="0" stroke="#000" fill="#000000">IBKR</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_2" y="194.9375" x="115.5" stroke-width="0" stroke="#000" fill="#000000">lib</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_3" y="192.9375" x="224.5" stroke-width="0" stroke="#000" fill="#000000">data</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_5" y="192.9375" x="461.396406" stroke-width="0" stroke="#000" fill="#000000">learn</text>
+  <line stroke="#000" stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_6" y2="428.446926" x2="127.5" y1="206.4375" x1="127.5" stroke-width="1.5" fill="none"/>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_7" y2="417.446934" x2="247.5" y1="205.4375" x1="247.5" stroke-width="1.5" stroke="#000" fill="none"/>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_9" y2="412.446934" x2="485.396406" y1="200.4375" x1="485.396406" stroke-width="1.5" stroke="#000" fill="none"/>
+  <line stroke="#000" stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_10" y2="151.437495" x2="256" y1="46.4375" x1="256" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" fill="none"/>
+  <line stroke="#000" stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_11" y2="151.4375" x2="483.499984" y1="152.522866" x1="127.500002" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" fill="none"/>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_12" y2="228.4375" x2="103.305173" y1="228.4375" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_14" y="232.4375" x="48.875" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">helper.py</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_15" y2="256.4375" x2="103.305173" y1="256.4375" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_16" y="260.4375" x="47.5625" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">nselist.py</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_17" y2="283.4375" x2="103.305173" y1="283.4375" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_18" y="287.4375" x="47.5625" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">snplist.py</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_19" y2="310.641104" x2="103.305173" y1="310.641104" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_20" y="314.641104" x="59.5625" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">ohlc.py</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_21" y2="335.790731" x2="103.305173" y1="335.790731" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_22" y="339.790731" x="64.890625" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">opt.py</text>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_23" y="371.4375" x="30.206833" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">nse_build.py</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_24" y="391.4375" x="12.191208" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">nse_manage.py</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_26" y2="101.4375" x2="-91.5" y1="101.4375" x1="-92.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_28" y2="367.86754" x2="103.305173" y1="367.86754" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_29" y2="386.86754" x2="103.305173" y1="386.86754" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_30" y2="228.4375" x2="248.153974" y1="228.4375" x1="271.348801" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text font-style="italic" style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_31" y="232.4375" x="279.852646" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">&lt;nse&gt;</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_32" y2="253.517372" x2="248.153974" y1="253.517372" x1="271.348801" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text font-style="italic" style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_33" y="257.517372" x="279.852646" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">&lt;snp&gt;</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_34" y="192.9375" x="349.59996" stroke-width="0" stroke="#000" fill="#000000">pic</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_35" y2="412.446934" x2="365.329756" y1="200.4375" x1="365.329756" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="9" id="svg_36" y="471.4375" x="479" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">https://editor.method.ac</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_37" y2="400.86754" x2="128.305173" y1="400.86754" x1="151.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text font-style="italic" style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_38" y="403.4375" x="159.852646" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">&lt;zarchive&gt;</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_39" y2="56.421375" x2="278.022716" y1="56.421375" x1="256" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_40" y="61.421375" x="281.852646" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">README.md</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_41" y2="75.447674" x2="278.022716" y1="75.447674" x1="256" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_42" y="79.447674" x="282.852646" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">todo.md</text>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_8" y="410.485092" x="30.206833" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">snp_build.py</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="12" id="svg_13" y="431.485092" x="12.191208" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">snp_manage.py</text>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_25" y2="406.915132" x2="103.305173" y1="406.915132" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+  <line stroke-linecap="undefined" stroke-linejoin="undefined" id="svg_27" y2="426.915132" x2="103.305173" y1="426.915132" x1="126.5" fill-opacity="null" stroke-opacity="null" stroke-width="1.5" stroke="#000" fill="none"/>
+ </g>
+</svg>
