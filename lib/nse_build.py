@@ -7,7 +7,7 @@
 #_______________________________________________
 
 from ib_insync import *
-util.startLoop()
+# util.startLoop()
 ib = IB().connect('127.0.0.1', 3000, clientId=2)
 
 import os
