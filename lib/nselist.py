@@ -140,7 +140,9 @@ def get_opt(ib, df):
     Args:
         (ib) as the active ib object
         (df) datframe with columns und_contract, expiry, strike
-    Returns: options dataframe''' 
+    Returns: options dataframe'''
+    
+    df = df.reset_index(drop=True)  # reset the index
 
     und_contract = df.iloc[0].und_contract
 
@@ -157,7 +159,6 @@ def get_opt(ib, df):
     undPrice = df_und.undPrice[0]
 
     # build the puts and calls
-
     df['right'] = np.where(df.strike < undPrice, 'P', 'C')
 
     df['dte'] = [get_dte(e) for e in df.expiry]

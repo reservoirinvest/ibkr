@@ -15,39 +15,39 @@ from snplist import fspath, snp_list, get_opt
 import datetime
 
 # declaration
-hrs = 2   # approximate time taken to get options for all scrips
+hrs = 3   # approximate time taken to get options for all scrips
 
 # qualified list of stocks and index, with their contracts and chains
-symconchain = snp_list(ib)
+df_snplist = snp_list(ib)
 
-symbols = symconchain[0] # all symbols
-
-contracts = symconchain[1] # all contracts
-
-chains = symconchain[2] # all chains
+# make the dfs from snplist
+dfs = [df_snplist[df_snplist.symbol == s].reset_index(drop=True) for s in list(df_snplist.symbol.unique())]
 
 # Take only pickle files. Remove directories and files starting with underscore (for underlyings)
 fs = [f for f in os.listdir(fspath) if (f[-7:] == 'opt.pkl')] # list of opt pickle files
-xs = [f[:-8] for f in fs] # symbols for existing pickle files with options
+
+all_pickles = [fspath+f for f in os.listdir(fspath) if f.endswith('.pkl')]  # all pickled files
+av_pkl_symbols = [f[:-8] for f in fs] # available pickle symbols
 
 if fs: # if the file list is not empty
-
+    
     # Get modified time, fail time and identify where the scrip has failed
     fsmod = {f: os.path.getmtime(fspath + '/' + f) for f in fs}
     failtime = max([v for k, v in fsmod.items()])
     failscrip = [k[:-4] for k, v in fsmod.items() if v == failtime][0]
     
     # now - porgram runtime
-    floortime = (datetime.datetime.now() - datetime.timedelta(hours = hrs)).timestamp()  
-
-    if failtime < floortime:   # program failed to fully pickle
-        restartfrom = 0  # restart from zero
+    floortime = (datetime.datetime.now() - datetime.timedelta(hours = hrs)).timestamp()
+    
+    if failtime < floortime:   # the pickles are old
+#         [os.unlink(fn) for fn in all_pickles] # delete all the pickles
+        [get_opt(ib, df.reset_index()) for df in dfs] # get options for all the symbols
     else:
-        restartfrom = symbols.index(failscrip[:-4]) + 1 # restart from where it failed
+        dfr = [df for df in dfs for sym in df.symbol.unique() if sym not in av_pkl_symbols] # pickle the remaining symbols
+        [get_opt(ib, df.reset_index()) for df in dfr] # get options for all the symbols
 
-else: 
-    restartfrom = 0  # restart from zero if the file list is empty
+else:  # there are no pickles
+    [get_opt(ib, df.reset_index()) for df in dfs] # get options for all the symbols
 
-[get_opt(ib, contract, chain) for contract, chain in zip(contracts[restartfrom:], chains[restartfrom:])]
 print('SNP build completed!')
 ib.disconnect()
