@@ -13,12 +13,17 @@ ib = IB().connect('127.0.0.1', 1300, clientId=2)
 import os
 from snplist import fspath, snp_list, get_opt
 import datetime
+import time
+import pandas as pd
+
+start = time.time()
 
 # declaration
 hrs = 3   # approximate time taken to get options for all scrips
 
 # qualified list of stocks and index, with their contracts and chains
 df_snplist = snp_list(ib)
+# df_snplist = pd.read_pickle(fspath+'snplist.pkl')
 
 # make the dfs from snplist
 dfs = [df_snplist[df_snplist.symbol == s].reset_index(drop=True) for s in list(df_snplist.symbol.unique())]
@@ -41,13 +46,21 @@ if fs: # if the file list is not empty
     
     if failtime < floortime:   # the pickles are old
 #         [os.unlink(fn) for fn in all_pickles] # delete all the pickles
-        [get_opt(ib, df.reset_index()) for df in dfs] # get options for all the symbols
+        [get_opt(ib, df) for df in dfs] # get options for all the symbols
     else:
         dfr = [df for df in dfs for sym in df.symbol.unique() if sym not in av_pkl_symbols] # pickle the remaining symbols
-        [get_opt(ib, df.reset_index()) for df in dfr] # get options for all the symbols
+
+        [get_opt(ib, df) for df in dfr] # get options for all the symbols
 
 else:  # there are no pickles
-    [get_opt(ib, df.reset_index()) for df in dfs] # get options for all the symbols
+    [get_opt(ib, df) for df in dfs] # get options for all the symbols
 
-print('SNP build completed!')
+end = time.time()
+
+time_taken = end-start
+
+m, s = divmod(time_taken, 60)
+h, m = divmod(m, 60)
+
+print("SNP build completed in {0:2.0f} hours : {1:2.0f} mins : {2:2.0f} seconds!".format(h, m, s))
 ib.disconnect()

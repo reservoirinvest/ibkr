@@ -32,7 +32,7 @@ rate = float(df_rate[-1:]['1 yr'].values[0])/100 # Get the last row's 1 yr value
 #______________________
 
 # ... build the snp list
-sym_chg_dict = {'BRK.B': 'BRK B', 'BRK/B': 'BRK B', 'BRKB', 'BRK B'} # Remap symbols in line with IBKR
+sym_chg_dict = {'BRK.B': 'BRK B', 'BRK/B': 'BRK B', 'BRKB': 'BRK B'} # Remap symbols in line with IBKR
 
 snpurl = 'https://en.wikipedia.org/wiki/S%26P_100'
 df_snp = pd.read_html(snpurl, header=0)[2]
@@ -58,7 +58,8 @@ equities = [e for e in list(df_snp.Symbol) if e in list(df_cboe.Ticker)]
 
 # filter and list the etfs
 df_etf = df_cboe[df_cboe.ProductType == 'ETF'].reset_index(drop=True)
-etfs = list(df_etf.Ticker)
+
+etfs = [e for e in df_etf.Ticker if e not in 'VXX']  # Remove VXX
 
 stocks = sorted(equities+etfs)
 
@@ -79,7 +80,7 @@ ixs = [Index(symbol=s,currency=currency, exchange='CBOE') for s in set(indexes)]
 
 cs = ss+ixs
 
-# cs = cs[:5] # DATA LIMITER!!!
+# cs = cs[15:18] # DATA LIMITER!!!
 
 # sort in alphabetical order
 cs.sort(key=lambda x: x.symbol, reverse=False)
@@ -92,19 +93,18 @@ def snp_list(ib):
     
     qcs = ib.qualifyContracts(*cs) # qualified underlyings
 
-    qcs_chains = []
-    for i in range(0, len(qcs), 50):
-        for c in qcs[i: i+50]:
-            qcs_chains.append(ib.reqSecDefOptParams(underlyingSymbol=c.symbol, futFopExchange='', 
-                                  underlyingConId=c.conId, underlyingSecType=c.secType))
-            ib.sleep(0.5)
+    # get option chains
+    qcs_chains = [ib.reqSecDefOptParams(underlyingSymbol=c.symbol, futFopExchange='', 
+                                      underlyingConId=c.conId, underlyingSecType=c.secType) for c in qcs]
 
-    # remove chains which are not SMART
-    qcs_smart = [c for q in qcs_chains for c in q if c.exchange == exchange]
+    # validate option chains for SMART exchange and existance of expiry and strikes
+    qcs_smart = [i for q in qcs_chains for i in q if i.exchange == exchange if i.expirations if i.strikes]
 
-    syms = [q.tradingClass for q in qcs_smart]
-    expirations = [catch(lambda: q.expirations) for q in qcs_smart]
-    strikes = [catch(lambda: q.strikes) for q in qcs_smart]
+    # collect the symbols from qcs (takes care of errors in BKR B)
+    syms = [q.symbol for qs in qcs_smart for q in qcs if qs.underlyingConId == q.conId]
+
+    expirations = [q.expirations for q in qcs_smart]
+    strikes = [q.strikes for q in qcs_smart]
 
     df_symconchain = pd.DataFrame([{'symbol': s, 'expiry': e, 'strike': k, 'und_contract': q} 
                                    for s, e, k, q in zip(syms, expirations, strikes, qcs)]).dropna(how = 'any') # make dataframe
@@ -119,6 +119,8 @@ def snp_list(ib):
 
     # drop chains whose dte is less than mindte and more than maxdte
     df_scc1 = df_scc[df_scc.dte.between(mindte, maxdte)].drop('dte', 1)
+    
+    df_scc1.to_pickle(fspath+'_snplist.pkl')
 
     return df_scc1
 
