@@ -10,33 +10,37 @@
 * undPrice, dte, margin = ROM
 
 ## POP
-* undPrice, strike, dte, rate, volatility, dividend = bsmPrice, bsmDelta (POP)
+* (from program)
+    * get_rfrate
+    * get_dividends
+    * undPrice, strike, dte, rfrate, volatility, dividend = bsmPrice, bsmDelta (POP)
 
 # Inputs
 
 ## Generic
-* (from program): 
+* (from helper programs): 
    * get_connected
    * get_margins
       * existing option margins
-   
-   * get_rfrate
+
    * get_underlyings (qualified) 
-   
-   * undMargin
    
    * lotsize
    
    * get_remQty
    * get_blacklist
    
-* (from csv):  
+* (from csv):
    * putCutoff, callCutoff, RiskPenalty
+   
+* (assembler)
+    * undMargin
+    
 
 ## Underlying
 * (from program)
     * ohlc
-    * undPrice, option_chain (s+e), dividends, option_margin, 
+    * undPrice, option_chain (s+e), option_margin, 
 
 ## Options
 * symbol(filtered), strike, expiry, dte, stdev, volatility, optPrice, optMargin, optBid, optAsk, = (optPrice, optMargin)
@@ -45,5 +49,8 @@
 * Delete only old pickle files
 * Convert jupyter json cells to py programs
 
-mastermargin
+# Learn
+* Using asyncio on function with wait
+* Using asyncio on function with gather
+* Using asyncio in for loop
 
