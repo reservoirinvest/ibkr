@@ -23,12 +23,15 @@
    * get_margins
       * existing option margins
 
-   * get_underlyings (qualified) 
+   * get_underlyings (qualified)
    
    * lotsize
    
-   * get_remQty
-   * get_blacklist
+   * get_dte()
+   
+   * remQty
+   * blacklist
+   
    
 * (from csv):
    * putCutoff, callCutoff, RiskPenalty
