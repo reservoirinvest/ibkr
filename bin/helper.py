@@ -328,7 +328,6 @@ blk = 50
 mindte = 3
 maxdte = 60       # maximum days-to-expiry for options
 minstdmult = 3    # minimum standard deviation multiple to screen strikes. 3 is 99.73% probability
-fspath = '../data/snp/' # path for pickles
 
 def get_snp_options(ib, undContract, undPrice, fspath = '../data/snp/'):
     '''Pickles the option chains
@@ -481,6 +480,87 @@ def grp_opts(df):
     df = pd.concat([df_puts, df_calls]).reset_index(drop=True)
     
     return df
+
+#_____________________________________
+
+# get_connected.py
+def get_connected(market, trade_type):
+    ''' get connected to ibkr
+    Args: 
+       (market) as string <'nse'> | <'snp'>
+       (trade_type) as string <'live'> | <'paper'>
+    Returns:
+        (ib) object if successful
+    '''
+    
+    ip = (market.upper(), trade_type.upper())
+    
+    #host dictionary
+    hostdict = {('NSE', 'LIVE'): 3000,
+                ('NSE', 'PAPER'): 3001,
+                ('SNP', 'LIVE'): 1300,
+                ('SNP', 'PAPER'): 1301,}
+    
+    host = hostdict[ip]
+    
+    cid = 1 # initialize clientId
+    max_cid = 5 # maximum clientId allowed. max possible is 32
+
+    for i in range(cid, max_cid):
+        try:
+            ib = IB().connect('127.0.0.1', host, clientId=i)
+            
+        except Exception as e:
+            print(e) # print the error
+            continue # go to next
+            
+        break # successful try
+        
+    return ib
+
+#_____________________________________
+
+# get_nses.py
+
+import pandas as pd
+
+blk = 50 # no of stocks in a block
+exchange = 'NSE'
+def get_nses(ib):
+    '''Returns: list of nse underlying contracts
+    '''
+    tp = pd.read_html('https://www.tradeplusonline.com/Equity-Futures-Margin-Calculator.aspx')
+
+    df_tp = tp[1][2:].iloc[:, :-1]
+    df_tp = df_tp.iloc[:, [0,1,5]]
+    df_tp.columns=['nseSymbol', 'lot', 'margin']
+
+    cols = df_tp.columns.drop('nseSymbol')
+    df_tp[cols] = df_tp[cols].apply(pd.to_numeric, errors='coerce') # convert lot and margin to numeric
+
+    df_slm = df_tp.copy()
+
+    # Truncate to 9 characters for ibSymbol
+    df_slm['ibSymbol'] = df_slm.nseSymbol.str.slice(0,9)
+
+    # nseSymbol to ibSymbol dictionary for conversion
+    ntoi = {'M&M': 'MM', 'M&MFIN': 'MMFIN', 'L&TFH': 'LTFH', 'NIFTY': 'NIFTY50'}
+
+    # remap ibSymbol, based on the dictionary
+    df_slm.ibSymbol = df_slm.ibSymbol.replace(ntoi)
+
+    # separate indexes and equities, eliminate discards from df_slm
+    indexes = ['NIFTY50', 'BANKNIFTY']
+    discards = ['NIFTYMID5', 'NIFTYIT', 'LUPIN']
+    equities = sorted([s for s in df_slm.ibSymbol if s not in indexes+discards])
+
+    symbols = equities+indexes
+
+    cs = [Stock(s, exchange) if s in equities else Index(s, exchange) for s in symbols]
+
+    qcs = ib.qualifyContracts(*cs) # qualified underlyings
+    
+    return qcs
 
 #_____________________________________
 
