@@ -6,7 +6,7 @@ from os import listdir
 
 from helper import get_snps, get_snp_options, catch, get_connected
 
-keep_pickles = True   # keep already pickled symbols
+keep_pickles = False   # keep already pickled symbols
 
 with get_connected('snp', 'live') as ib:
     

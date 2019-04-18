@@ -1,3 +1,40 @@
+# get_connected.py
+def get_connected(market, trade_type):
+    ''' get connected to ibkr
+    Args: 
+       (market) as string <'nse'> | <'snp'>
+       (trade_type) as string <'live'> | <'paper'>
+    Returns:
+        (ib) object if successful
+    '''
+    
+    ip = (market.upper(), trade_type.upper())
+    
+    #host dictionary
+    hostdict = {('NSE', 'LIVE'): 3000,
+                ('NSE', 'PAPER'): 3001,
+                ('SNP', 'LIVE'): 1300,
+                ('SNP', 'PAPER'): 1301,}
+    
+    host = hostdict[ip]
+    
+    cid = 1 # initialize clientId
+    max_cid = 5 # maximum clientId allowed. max possible is 32
+
+    for i in range(cid, max_cid):
+        try:
+            ib = IB().connect('127.0.0.1', host, clientId=i)
+            
+        except Exception as e:
+            print(e) # print the error
+            continue # go to next
+            
+        break # successful try
+        
+    return ib
+
+#_____________________________________
+
 # get_margins.py
 from itertools import repeat
 def get_margins(ib, contracts, *lotsize):
@@ -228,8 +265,10 @@ def save_open_orders(ib, fspath='../data/snp/'):
 import numpy as np
 import pandas as pd
 
-def get_portfolio(ib):
-    '''Arg: (ib) as the connection object
+def get_portfolio(ib, exchange='SMART'):
+    '''Arg: 
+         (ib) as the connection object
+         <exchange> 'NSE' | 'SMART' as string
        Returns: (df) as the dataframe with margins and assignments'''
 
     p = util.df(ib.portfolio()) # portfolio table
@@ -240,7 +279,7 @@ def get_portfolio(ib):
 
     # get the underlying's margins
     syms = {s for s in dfp.symbol}
-    undc = {s: ib.qualifyContracts(Stock(s, 'SMART', 'USD')) for s in syms}   # {symbol: contracts} dictionary
+    undc = {s: ib.qualifyContracts(Stock(s, exchange, 'USD')) for s in syms}   # {symbol: contracts} dictionary
 
     undmlist = [get_margins(ib, u, 1) for u in undc.values()]                 # {contract: margin} dictionary
     undMargins = {k.symbol: v for i in undmlist for k, v in i.items()}        # {symbol: margin} dictionary
@@ -335,8 +374,6 @@ def get_snp_options(ib, undContract, undPrice, fspath = '../data/snp/'):
         (ib) ib connection as object
         (undContract) underlying contract as object
         (undPrice) underlying contract price as float'''
-    
-#     fspath = '../data/snp/' # path for pickles
     
     symbol = undContract.symbol
     
@@ -483,40 +520,17 @@ def grp_opts(df):
 
 #_____________________________________
 
-# get_connected.py
-def get_connected(market, trade_type):
-    ''' get connected to ibkr
-    Args: 
-       (market) as string <'nse'> | <'snp'>
-       (trade_type) as string <'live'> | <'paper'>
-    Returns:
-        (ib) object if successful
-    '''
-    
-    ip = (market.upper(), trade_type.upper())
-    
-    #host dictionary
-    hostdict = {('NSE', 'LIVE'): 3000,
-                ('NSE', 'PAPER'): 3001,
-                ('SNP', 'LIVE'): 1300,
-                ('SNP', 'PAPER'): 1301,}
-    
-    host = hostdict[ip]
-    
-    cid = 1 # initialize clientId
-    max_cid = 5 # maximum clientId allowed. max possible is 32
+# get_prec.py
+# get precision, based on the base
+from math import floor, log10
 
-    for i in range(cid, max_cid):
-        try:
-            ib = IB().connect('127.0.0.1', host, clientId=i)
-            
-        except Exception as e:
-            print(e) # print the error
-            continue # go to next
-            
-        break # successful try
-        
-    return ib
+def get_prec(v, base):
+    '''gives the precision value
+    args:
+       (v) as value needing precision in float
+       (base) as the base value e.g. 0.05'''
+    
+    return round(round((v)/ base) * base, -int(floor(log10(base))))
 
 #_____________________________________
 
@@ -527,7 +541,7 @@ import pandas as pd
 blk = 50 # no of stocks in a block
 exchange = 'NSE'
 def get_nses(ib):
-    '''Returns: list of nse underlying contracts
+    '''Returns: list of nse underlying (contracts, dictionary of lots) as a tuple
     '''
     tp = pd.read_html('https://www.tradeplusonline.com/Equity-Futures-Margin-Calculator.aspx')
 
@@ -559,8 +573,185 @@ def get_nses(ib):
     cs = [Stock(s, exchange) if s in equities else Index(s, exchange) for s in symbols]
 
     qcs = ib.qualifyContracts(*cs) # qualified underlyings
+
+    lots_dict = [v for k, v in df_slm[['ibSymbol', 'lot']].set_index('ibSymbol').to_dict().items()][0]
     
-    return qcs
+    margins_dict = [v for k, v in df_slm[['ibSymbol', 'margin']].set_index('ibSymbol').to_dict().items()][0]
+    
+    return qcs, lots_dict, margins_dict
+
+#_____________________________________
+
+# get_nse_options.py
+from itertools import product, repeat
+
+blk = 50
+mindte = 3
+maxdte = 60       # maximum days-to-expiry for options
+minstdmult = 3    # minimum standard deviation multiple to screen strikes. 3 is 99.73% probability
+
+def get_nse_options(ib, undContract, undPrice, lotsize, fspath = '../data/nse/'):
+    '''Pickles the option chains
+    Args:
+        (ib) ib connection as object
+        (undContract) underlying contract as object
+        (undPrice) underlying contract price as float
+        (lotsize) lot-size dictionary
+        <fspath> file path to store nse options'''
+    
+    symbol = undContract.symbol
+    
+    chains = ib.reqSecDefOptParams(underlyingSymbol = symbol,
+                         futFopExchange = '',
+                         underlyingSecType = undContract.secType,
+                         underlyingConId= undContract.conId)
+
+    xs = [set(product(c.expirations, c.strikes)) for c in chains if c.exchange == 'NSE']
+
+    expirations = [i[0] for j in xs for i in j]
+    strikes = [i[1] for j in xs for i in j]
+    dflength = len(expirations)
+
+    #...first df with symbol, strike and expiry
+    df1 = pd.DataFrame({'cid': pd.Series(np.repeat(undContract.conId,dflength)), 
+                  'symbol': pd.Series(np.repeat(symbol,dflength)),
+                  'expiration': expirations,
+                  'strike': strikes,
+                  'dte': [get_dte(e) for e in expirations],
+                  'undPrice': pd.Series(np.repeat(undPrice,dflength))})
+
+    df2 = df1[(df1.dte > mindte) & (df1.dte < maxdte)].reset_index(drop=True)  # limiting dtes
+
+    dtes = df2.dte.unique().tolist()
+
+    #...get the max fall / rise for puts / calls
+    maxFallRise = {d: get_maxfallrise(ib, c, d) for c, d in zip(repeat(undContract), dtes)}
+
+    df3 = df2.join(pd.DataFrame(df2.dte.map(maxFallRise).tolist(), index=df2.index, columns=['lo52', 'hi52', 'Fall', 'Rise']))
+
+    df4 = df3.assign(loFall = df3.undPrice-df3.Fall, hiRise = df3.undPrice+df3.Rise)
+
+    std = {d: get_rollingmax_std(ib, c, d) for c, d in zip(repeat(undContract), dtes)}
+
+    df4['std3'] = df4.dte.map(std)*minstdmult
+
+    df4['loStd3'] = df4.undPrice - df4.std3
+    df4['hiStd3'] = df4.undPrice + df4.std3
+
+    # flter puts and calls by standard deviation
+    df_puts = df4[df4.strike < df4.loStd3]
+    df_calls = df4[df4.strike > df4.hiStd3]
+
+    # df_puts = df4 # keep the puts dataframe without limits
+    # df_calls = df4.iloc[0:0] # empty the calls dataframe
+
+    # with rights
+    df_puts = df_puts.assign(right='P')
+    df_calls = df_calls.assign(right='C')
+
+    # qualify the options
+    df_opt1 = pd.concat([df_puts, df_calls]).reset_index()
+
+    optipl = [Option(s, e, k, r, 'NSE') for s, e, k, r in zip(df_opt1.symbol, df_opt1.expiration, df_opt1.strike, df_opt1.right)]
+
+    optblks = [optipl[i: i+blk] for i in range(0, len(optipl), blk)] # blocks of optipl
+
+    # qualify the contracts
+    contracts = [ib.qualifyContracts(*s) for s in optblks]
+    q_opt = [d for c in contracts for d in c]
+
+    opt_iDict = {c.conId: c for c in q_opt}
+
+    df_opt1 = util.df(q_opt).loc[:, ['conId', 'symbol', 'lastTradeDateOrContractMonth', 'strike', 'right']]
+
+    df_opt1 = df_opt1.rename(columns={'lastTradeDateOrContractMonth': 'expiration', 'conId': 'optId'})
+
+    opt_tickers = ib.reqTickers(*q_opt)
+#     ib.sleep(1) # to get the tickers filled
+
+    df_opt1 = df_opt1.assign(optPrice = [t.marketPrice() for t in opt_tickers])
+
+    df_opt1 = df_opt1[df_opt1.optPrice > 0.0]
+
+    cols=['symbol', 'expiration', 'strike']
+    df_opt2 = pd.merge(df4, df_opt1, on=cols).drop('cid', 1).reset_index(drop=True)
+
+    # Get lotsize for the underlying symbol
+    df_opt2 = df_opt2.assign(lotsize = lotsize)
+
+    opt_contracts = [opt_iDict[i] for i in df_opt2.optId]
+
+    opt_margins = get_margins(ib,opt_contracts, lotsize)
+
+    df_opt2 = df_opt2.assign(optMargin = [abs(v) for k, v in opt_margins.items()])
+
+    df_opt2 = df_opt2.assign(rom=df_opt2.optPrice/df_opt2.optMargin*252/df_opt2.dte).sort_values('rom', ascending=False)
+
+    df_opt2.to_pickle(fspath+symbol+'.pkl')
+
+#_____________________________________
+
+# get_nse_remqty.py
+def get_nse_remqty(ib):
+    '''generates the remaining quantities dictionary
+    Args:
+        (ib) as connection object
+    Returns:
+        remqty as a dictionary of {symbol: remqty}
+        '''
+    exchange = 'NSE'
+    nse_assignment_limit = 1500000
+
+    # get the list of underlying contracts and dictionary of lots
+    contracts_lots = get_nses(ib)
+    undContracts = contracts_lots[0]
+    c_dict = {u.symbol: u for u in undContracts} # {symbol: contract}
+    lots_dict = contracts_lots[1]                # {symbol: lotsize}
+    margin_dict = contracts_lots[2]              # {symbol: margin}
+
+    tickers = ib.reqTickers(*undContracts)
+    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
+    
+    df_und = \
+        pd.DataFrame.from_dict(lots_dict, orient='index', columns=['lotsize']).\
+        join(pd.DataFrame.from_dict(undPrices, orient='index', columns=['undPrice'])).\
+        join(pd.DataFrame.from_dict(c_dict, orient='index', columns=['undContract'])).dropna()
+    
+    df_und = df_und.assign(remq=(nse_assignment_limit/(df_und.lotsize*df_und.undPrice)).astype('int')) # remaining quantities in entire nse
+    
+    # from portfolio
+    #_______________
+    
+    p = util.df(ib.portfolio()) # portfolio table
+    
+    # extract option contract info from portfolio table
+    dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
+    dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+
+    # get the underlying's margins, lots, prices and positions
+    pos_dict = dfp.groupby('symbol')['position'].sum().to_dict()
+    p_syms = {s for s in dfp.symbol}
+    p_undc = {s: ib.qualifyContracts(Stock(s, exchange)) for s in p_syms}   # {symbol: contracts} dictionary
+    p_undMargins = {u: margin_dict[u] for u in p_syms} # {symbol: undMargin} dictionary
+    p_undLots = {u: lots_dict[u] for u in p_syms}      # {symbol: lots} dictionary
+    p_undPrices = {u: undPrices[u] for u in p_syms}    #{symbol: undPrice} dictionary
+    
+    dfp1 = pd.DataFrame.from_dict(p_undc, orient='index', columns=['contract']). \
+        join(pd.DataFrame.from_dict(p_undMargins, orient='index', columns=['undmargin'])). \
+        join(pd.DataFrame.from_dict(p_undLots, orient = 'index', columns=['undLot'])). \
+        join(pd.DataFrame.from_dict(p_undPrices, orient='index', columns=['undPrice'])). \
+        join(pd.DataFrame.from_dict(pos_dict, orient='index', columns=['position']))
+    
+    dfp1 = dfp1.assign(qty=(dfp1.position/dfp1.undLot).astype('int'))
+    
+    # make the blacklist
+    #___________________
+    remqty_dict = pd.DataFrame(df_und.loc[dfp1.index].remq + dfp1.qty).to_dict()[0] # remq from portfolio
+    remqty_dict = {k:(v if v > 0 else 0) for k, v in remqty_dict.items()} # portfolio's remq with negative values removed
+    blacklist = [k for k, v in remqty_dict.items() if v <=0] # the blacklist
+    df_und.remq.update(pd.Series(remqty_dict)) # replace all underlying with remq of portfolio
+    remqty = df_und.remq.to_dict() # dictionary
+    return remqty
 
 #_____________________________________
 
