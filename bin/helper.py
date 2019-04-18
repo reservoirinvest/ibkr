@@ -261,102 +261,68 @@ def save_open_orders(ib, fspath='../data/snp/'):
 
 #_____________________________________
 
-# get_portfolio.py
-import numpy as np
-import pandas as pd
+# get_snp_remqty.py
+def get_snp_remqty(ib):
+    '''generates the remaining quantities dictionary
+    Args:
+        (ib) as connection object
+    Returns:
+        remqty as a dictionary of {symbol: remqty}
+        '''
+    exchange = 'SMART'
+    snp_assignment_limit = 50000
+    lotsize=100
+    
+    # get the list of underlying contracts
+    undContracts = get_snps(ib)
+    c_dict = {u.symbol: u for u in undContracts} # {symbol: contract}
+    
+    tickers = ib.reqTickers(*undContracts)
+    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
 
-def get_portfolio(ib, exchange='SMART'):
-    '''Arg: 
-         (ib) as the connection object
-         <exchange> 'NSE' | 'SMART' as string
-       Returns: (df) as the dataframe with margins and assignments'''
-
+    df_und = \
+        pd.DataFrame.from_dict(undPrices, orient='index', columns=['undPrice']).\
+        join(pd.DataFrame.from_dict(c_dict, orient='index', columns=['undContract'])).dropna()
+    
+    df_und = df_und.assign(lotsize=lotsize)
+    
+    # remaining quantities in entire snp per assignment limit
+    df_und = df_und.assign(remq=(snp_assignment_limit/(df_und.lotsize*df_und.undPrice)).astype('int')) 
+    
+    # from portfolio
+    #_______________
+    
     p = util.df(ib.portfolio()) # portfolio table
-
+    
     # extract option contract info from portfolio table
     dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
     dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-    # get the underlying's margins
-    syms = {s for s in dfp.symbol}
-    undc = {s: ib.qualifyContracts(Stock(s, exchange, 'USD')) for s in syms}   # {symbol: contracts} dictionary
-
-    undmlist = [get_margins(ib, u, 1) for u in undc.values()]                 # {contract: margin} dictionary
-    undMargins = {k.symbol: v for i in undmlist for k, v in i.items()}        # {symbol: margin} dictionary
-
-    dfp = dfp.assign(lotsize=np.where(dfp.secType == 'OPT', 100, 1))
-
-    dfp = dfp.assign(undMargin = dfp.symbol.map(undMargins)*dfp.position*dfp.lotsize)
-
-    #...get the underlying prices
-    undContracts = [j for k, v in undc.items() for j in v]
-    tickers = ib.reqTickers(*undContracts)
-    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers}
-    dfp = dfp.assign(undPrice = dfp.symbol.map(undPrices))
-
-
-    # get the contracts again (as some of them miss markets)
-    port_c = [j for c in [ib.qualifyContracts(Contract(conId=c)) for c in dfp.conId] for j in c]
-
-    dfp = dfp.assign(contract=port_c)
-
-    # get the portfolio margins
-    dict_port_opt_margins = get_margins(ib, dfp.contract, dfp.position)
-
-    dfp = dfp.assign(margin=dfp.contract.map(dict_port_opt_margins)*dfp.position/abs(dfp.position))  # margin's sign put in line with position held
-
-    dfp = dfp.assign(assignment = dfp.undPrice*dfp.position*dfp.lotsize).drop(['account', 'multiplier'], axis=1)
+    # get the underlying's margins, lots, prices and positions
+    pos_dict = dfp.groupby('symbol')['position'].sum().to_dict()
+    p_syms = {s for s in dfp.symbol}
+    p_undc = {s: ib.qualifyContracts(Stock(s, exchange, currency='USD')) for s in p_syms}   # {symbol: contracts} dictionary
+    undmlist = [get_margins(ib, u, 100) for u in p_undc.values()]                 # {contract: margin} dictionary
+    p_undMargins = {k.symbol: v for i in undmlist for k, v in i.items()}        # {symbol: margin} dictionary
+    p_undPrices = {u: undPrices[u] for u in p_syms}    #{symbol: undPrice} dictionary
     
-    return dfp
-
-#_____________________________________
-
-# get_p_remqty.py
-
-from ib_insync import *
-
-assignment_limit = 120000
-
-def get_p_remqty(ib):
-    '''gets remaining quantity for target options
-    This has to be run before get_remqty
-    Args: 
-        (ib) as connection object
-    Returns: (remqty) as dictionary {symbol: value}
-    Dependencies: save_open_orders(), get_portfolio(), get_snps()'''
+    dfp1 = pd.DataFrame.from_dict(p_undc, orient='index', columns=['contract']). \
+        join(pd.DataFrame.from_dict(p_undMargins, orient='index', columns=['undmargin'])). \
+        join(pd.DataFrame.from_dict(p_undPrices, orient='index', columns=['undPrice'])). \
+        join(pd.DataFrame.from_dict(pos_dict, orient='index', columns=['position']))
     
-    #... read the account info
-    ac = ib.accountValues()
-    df_a = util.df(ac)
-
-    #... set max margin per position
-    net_liq = float(df_a[df_a.tag == 'NetLiquidation'].iloc[0].value) 
-    av_funds = float(df_a[df_a.tag == 'FullAvailableFunds'].iloc[0].value)
-
-    # save any openorders into a pickle
-    if ib.reqAllOpenOrders():
-        dfopenords = save_open_orders(ib)
-
-    # cancel all openorders. This is to prevent get_margins() from failing
-    cancelTrades = ib.reqGlobalCancel()
-
-    dfp = get_portfolio(ib)  # get the portfolio positions
-
-    current_assignment_dict = dfp.groupby('symbol').sum()[['assignment']].to_dict()['assignment'] # current assignment possibility
-
-    df_ua = dfp.drop_duplicates('symbol')[['symbol', 'undPrice', 'lotsize']] # unit assignment
-    df_ua = df_ua.assign(assignment=df_ua.undPrice*df_ua.lotsize)
-    unit_assignment_dict = df_ua.groupby('symbol').mean()[['assignment']].to_dict()['assignment']
-
-    remqty_dict = {k1: (assignment_limit+v1)/v2 
-                   for k1, v1 in current_assignment_dict.items() 
-                   for k2, v2 in unit_assignment_dict.items() if k1 == k2}
-
-    rqwoz = [(k, int(v)) if v > 0 else (k, 0) 
-             for k, v in remqty_dict.items()] # remaining quantity without zeros
-    remqty_p = {k: v for (k, v) in rqwoz} # remaining quantity from positions
+    dfp1 = dfp1.assign(undLot=1)
     
-    return remqty_p
+    dfp1 = dfp1.assign(qty=(dfp1.position/dfp1.undLot).astype('int'))
+    
+    # make the blacklist
+    #___________________
+    remqty_dict = pd.DataFrame(df_und.loc[dfp1.index].remq + dfp1.qty).to_dict()[0] # remq from portfolio
+    remqty_dict = {k:(v if v > 0 else 0) for k, v in remqty_dict.items()} # portfolio's remq with negative values removed
+    blacklist = [k for k, v in remqty_dict.items() if v <=0] # the blacklist
+    df_und.remq.update(pd.Series(remqty_dict)) # replace all underlying with remq of portfolio
+    remqty = df_und.remq.to_dict() # dictionary
+    return remqty
 
 #_____________________________________
 
@@ -469,28 +435,6 @@ def get_snp_options(ib, undContract, undPrice, fspath = '../data/snp/'):
 
 #_____________________________________
 
-# get_snp_remqty.py
-def get_snp_remqty(ib, remqty_p, undContracts):
-    '''generates the remaining quantities dictionary
-    Args:
-        (ib) as connection object
-        (remqty_p) remaining quantity from portfolio as dictionary
-        (undContracts) underlying contracts as a list
-    Returns:
-        remqty as a dictionary of {symbol: remqty}
-        '''
-    lotsize=100
-    
-    tickers = ib.reqTickers(*undContracts)
-    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
-
-    remq = {k: max(1, int(assignment_limit/v/lotsize)) for k, v in undPrices.items()} # maximum given to give GOOG, BKNG, etc a chance!
-    remq_list = [(k, remqty_p[k]) if k in remqty_p.keys() else (k, v) for k, v in remq.items()]
-    remqty = {k: v for (k, v) in remq_list}
-    return remqty
-
-#_____________________________________
-
 # grp_opts.py
 # group options based on right, symbol and strike.
 # this makes it easy to delete unwanted ones on inspection.
@@ -541,7 +485,7 @@ import pandas as pd
 blk = 50 # no of stocks in a block
 exchange = 'NSE'
 def get_nses(ib):
-    '''Returns: list of nse underlying (contracts, dictionary of lots) as a tuple
+    '''Returns: list of nse underlying (contracts, dictionary of lots, dictionary of margins) as a tuple
     '''
     tp = pd.read_html('https://www.tradeplusonline.com/Equity-Futures-Margin-Calculator.aspx')
 
@@ -590,13 +534,14 @@ mindte = 3
 maxdte = 60       # maximum days-to-expiry for options
 minstdmult = 3    # minimum standard deviation multiple to screen strikes. 3 is 99.73% probability
 
-def get_nse_options(ib, undContract, undPrice, lotsize, fspath = '../data/nse/'):
+def get_nse_options(ib, undContract, undPrice, lotsize, margin, fspath = '../data/nse/'):
     '''Pickles the option chains
     Args:
         (ib) ib connection as object
         (undContract) underlying contract as object
         (undPrice) underlying contract price as float
-        (lotsize) lot-size dictionary
+        (lotsize) lot-size as float
+        (margin) margin of undContract (used as a surrogate for option)
         <fspath> file path to store nse options'''
     
     symbol = undContract.symbol
@@ -676,16 +621,16 @@ def get_nse_options(ib, undContract, undPrice, lotsize, fspath = '../data/nse/')
     cols=['symbol', 'expiration', 'strike']
     df_opt2 = pd.merge(df4, df_opt1, on=cols).drop('cid', 1).reset_index(drop=True)
 
-    # Get lotsize for the underlying symbol
+    # Get lotsize and margin for the underlying symbol
     df_opt2 = df_opt2.assign(lotsize = lotsize)
+    df_opt2 = df_opt2.assign(optMargin = margin)
 
     opt_contracts = [opt_iDict[i] for i in df_opt2.optId]
 
-    opt_margins = get_margins(ib,opt_contracts, lotsize)
+#     opt_margins = get_margins(ib,opt_contracts, lotsize)
+#     df_opt2 = df_opt2.assign(optMargin = [abs(v) for k, v in opt_margins.items()])
 
-    df_opt2 = df_opt2.assign(optMargin = [abs(v) for k, v in opt_margins.items()])
-
-    df_opt2 = df_opt2.assign(rom=df_opt2.optPrice/df_opt2.optMargin*252/df_opt2.dte).sort_values('rom', ascending=False)
+    df_opt2 = df_opt2.assign(rom=df_opt2.optPrice*df_opt2.lotsize/df_opt2.optMargin*252/df_opt2.dte).sort_values('rom', ascending=False)
 
     df_opt2.to_pickle(fspath+symbol+'.pkl')
 
@@ -703,11 +648,11 @@ def get_nse_remqty(ib):
     nse_assignment_limit = 1500000
 
     # get the list of underlying contracts and dictionary of lots
-    contracts_lots = get_nses(ib)
-    undContracts = contracts_lots[0]
+    qlm = get_nses(ib)
+    undContracts = qlm[0]
     c_dict = {u.symbol: u for u in undContracts} # {symbol: contract}
-    lots_dict = contracts_lots[1]                # {symbol: lotsize}
-    margin_dict = contracts_lots[2]              # {symbol: margin}
+    lots_dict = qlm[1]                # {symbol: lotsize}
+    margin_dict = qlm[2]              # {symbol: margin}
 
     tickers = ib.reqTickers(*undContracts)
     undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
@@ -752,6 +697,32 @@ def get_nse_remqty(ib):
     df_und.remq.update(pd.Series(remqty_dict)) # replace all underlying with remq of portfolio
     remqty = df_und.remq.to_dict() # dictionary
     return remqty
+
+#_____________________________________
+
+# recalc_opts.py
+def recalc_opts(ib, df):
+    '''Recalculates option prices and margins
+    Arg:
+       (ib) as connection object
+       (df) as the dataframe of options
+    Returns: dataframe with updated OptPrices and OptMargins
+    '''
+    opt_contracts = [Contract(conId=c) for c in df.optId]
+    qopts = ib.qualifyContracts(*opt_contracts)
+    tickers = ib.reqTickers(*qopts)
+    optPrices = {t.contract.conId: t.marketPrice() for t in tickers} # {symbol: undPrice}
+    optMargins = {c.conId: ib.whatIfOrder(c,Order(action='SELL', orderType='MKT', totalQuantity=abs(ls), whatIf=True)).initMarginChange 
+        for c, ls in (zip(qopts, df.lotsize))}
+    
+    # update prices and margins
+    df = df.set_index('optId')
+    df.optPrice.update(pd.Series(optPrices))
+    df.optMargin.update(pd.Series(optMargins))
+    df.optMargin = df.optMargin.astype('float')
+    df = df.assign(rom=df.optPrice*df.lotsize/df.optMargin*252/df.dte)
+    
+    return df.reset_index()
 
 #_____________________________________
 
