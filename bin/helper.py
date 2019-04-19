@@ -1,4 +1,6 @@
 # get_connected.py
+
+from ib_insync import *
 def get_connected(market, trade_type):
     ''' get connected to ibkr
     Args: 

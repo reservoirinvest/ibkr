@@ -16,7 +16,7 @@ with get_connected('snp', 'live') as ib:
     undContracts = get_snps(ib)
     tickers = ib.reqTickers(*undContracts)
     undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
-
+    
     util.logToFile(fspath+'_errors.log')  # create log file
     with open(fspath+'_errors.log', 'w'): # clear the previous log
         pass
