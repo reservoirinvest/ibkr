@@ -200,6 +200,8 @@ def get_maxfallrise(ib, c, dte):
 #_____________________________________
 
 # catch.py
+import numpy as np
+
 def catch(func, handle=lambda e : e, *args, **kwargs):
     '''List comprehension error catcher
     Args: 
@@ -487,7 +489,11 @@ import pandas as pd
 blk = 50 # no of stocks in a block
 exchange = 'NSE'
 def get_nses(ib):
-    '''Returns: list of nse underlying (contracts, dictionary of lots, dictionary of margins) as a tuple
+    '''Arg: (ib) as connection object
+    Returns: tuple of following dicts: 
+        qualified underlying contracts nse underlying {symbol: contract}
+        lots {symbol: lots}
+        margins {symbol: margins}
     '''
     tp = pd.read_html('https://www.tradeplusonline.com/Equity-Futures-Margin-Calculator.aspx')
 
@@ -519,12 +525,14 @@ def get_nses(ib):
     cs = [Stock(s, exchange) if s in equities else Index(s, exchange) for s in symbols]
 
     qcs = ib.qualifyContracts(*cs) # qualified underlyings
+    
+    qcs_dict = {q.symbol: q for q in qcs}
 
     lots_dict = [v for k, v in df_slm[['ibSymbol', 'lot']].set_index('ibSymbol').to_dict().items()][0]
     
     margins_dict = [v for k, v in df_slm[['ibSymbol', 'margin']].set_index('ibSymbol').to_dict().items()][0]
     
-    return qcs, lots_dict, margins_dict
+    return qcs_dict, lots_dict, margins_dict
 
 #_____________________________________
 
@@ -651,10 +659,11 @@ def get_nse_remqty(ib):
 
     # get the list of underlying contracts and dictionary of lots
     qlm = get_nses(ib)
-    undContracts = qlm[0]
-    c_dict = {u.symbol: u for u in undContracts} # {symbol: contract}
-    lots_dict = qlm[1]                # {symbol: lotsize}
-    margin_dict = qlm[2]              # {symbol: margin}
+    c_dict = qlm[0]       # {symbol: contract}
+    lots_dict = qlm[1]    # {symbol: lotsize}
+    margin_dict = qlm[2]  # {symbol: margin}
+    
+    undContracts = [v for k, v in c_dict.items()]
 
     tickers = ib.reqTickers(*undContracts)
     undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}

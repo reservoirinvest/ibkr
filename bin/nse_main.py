@@ -14,10 +14,11 @@ with get_connected('nse', 'live') as ib:
     
     # get the list of underlying contracts and dictionary of lots
     qlm = get_nses(ib)
-    undContracts = qlm[0]
+    c_dict = qlm[0]
     lots_dict = qlm[1]
     margins_dict = qlm[2]
-
+    
+    undContracts = list(c_dict.values())
     tickers = ib.reqTickers(*undContracts)
     undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
     
@@ -30,10 +31,11 @@ with get_connected('nse', 'live') as ib:
 
     if keep_pickles:
         contracts = [m for m in undContracts if m.symbol not in optsList]
-        symbols = [c.symbol for c in contracts]
-        prices = [undPrices[s] for s in symbols]
-        lotsizes = [lots_dict[s] for s in symbols]
-        margins = [margins_dict[s] for s in symbols]
-        [catch(lambda: get_nse_options(ib, u, p, z, m)) for u, p, z, m in zip(contracts, prices, lotsizes, margins)]
     else:
-        [catch(lambda: get_nse_options(ib, u, p, z, m)) for u, p, z, m in zip(undContracts, undPrices.values(), lots_dict.values(), margins_dict.values())]
+        contracts = [m for m in undContracts]
+    symbols = [c.symbol for c in contracts]
+    prices = [undPrices[s] for s in symbols]
+    lotsizes = [lots_dict[s] for s in symbols]
+    margins = [margins_dict[s] for s in symbols]
+    
+    [catch(lambda: get_nse_options(ib, u, p, z, m)) for u, p, z, m in zip(contracts, prices, lotsizes, margins)]
