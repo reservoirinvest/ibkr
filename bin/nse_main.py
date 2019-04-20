@@ -6,7 +6,7 @@ from os import listdir
 
 from helper import get_connected, get_nses, get_nse_options, catch
 
-keep_pickles = False   # keep already pickled symbols
+keep_pickles = True   # keep already pickled symbols
 
 with get_connected('nse', 'live') as ib: 
     
@@ -38,4 +38,4 @@ with get_connected('nse', 'live') as ib:
     lotsizes = [lots_dict[s] for s in symbols]
     margins = [margins_dict[s] for s in symbols]
     
-    [catch(lambda: get_nse_options(ib, u, p, z, m)) for u, p, z, m in zip(contracts, prices, lotsizes, margins)]
+    [get_nse_options(ib, u, p, z, m) for u, p, z, m in zip(contracts, prices, lotsizes, margins)]

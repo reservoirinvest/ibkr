@@ -488,6 +488,8 @@ import pandas as pd
 
 blk = 50 # no of stocks in a block
 exchange = 'NSE'
+fspath = '../data/nse/'
+
 def get_nses(ib):
     '''Arg: (ib) as connection object
     Returns: tuple of following dicts: 
@@ -525,14 +527,38 @@ def get_nses(ib):
     cs = [Stock(s, exchange) if s in equities else Index(s, exchange) for s in symbols]
 
     qcs = ib.qualifyContracts(*cs) # qualified underlyings
-    
+
     qcs_dict = {q.symbol: q for q in qcs}
 
     lots_dict = [v for k, v in df_slm[['ibSymbol', 'lot']].set_index('ibSymbol').to_dict().items()][0]
+
+    m_dict = [v for k, v in df_slm[['ibSymbol', 'margin']].set_index('ibSymbol').to_dict().items()][0] # from website
+
+    # get the underlying prices
+    tickers = ib.reqTickers(*qcs)
+    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
+
+    # get the option chains
+    ch_list = [(q.symbol, 'IND', q.conId) 
+               if q.symbol in indexes 
+               else (q.symbol, 'STK', q.conId) 
+               for q in qcs]
+
+    chains = {s: ib.reqSecDefOptParams(underlyingSymbol=s, underlyingSecType=t, underlyingConId=c, futFopExchange='') for s, t, c in ch_list}
+
+    # generate whatif contract-orders for margins
+    co = [(k, min(v[0].expirations), 
+      min(v[0].strikes, key=lambda 
+          x:abs(x-undPrices[k])), 'P', 'NSE', lots_dict[k]) 
+      for k, v in chains.items()]
+
+    m_dict_ib = {c[0]:catch(lambda: ib.whatIfOrder(Option(c[0], c[1], c[2], c[3], c[4]), 
+                 Order(action='SELL', orderType='MKT', totalQuantity=c[5], whatIf=True)).initMarginChange)
+                 for c in co}
+
+    margins = {k: max(v, float(m_dict_ib[k])) for k, v in m_dict.items() if k not in discards}
     
-    margins_dict = [v for k, v in df_slm[['ibSymbol', 'margin']].set_index('ibSymbol').to_dict().items()][0]
-    
-    return qcs_dict, lots_dict, margins_dict
+    return qcs_dict, lots_dict, margins
 
 #_____________________________________
 
