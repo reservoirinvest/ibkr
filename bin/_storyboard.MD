@@ -1,46 +1,130 @@
-# 1Scrip module
+# NOTEBOOKS (.ipynb)
+* <b>helper.ipynb</b>    --- for generic helper functions
 
-## Functions
+* <b>nse_func.ipynb</b>  --- for nse specific functions
+* <b>nse_main.ipynb</b>  --- for nse management and control
 
-### get_margins(ib, contracts, * lotsize)
-* Not for nse equities due to subscription constraints
+* <b>snp_func.ipynb</b>  --- for snp specific functions
+* <b>snp_main.ipynb</b>  --- for snp management and control
 
-### get_snps(ib) or get_nses(ib)
-* generates a list of underlying contracts
+* <b>_jup2py.ipynb</b>   --- for auto-converting jupyter to py modules
 
-### get_dte(dt)
+* <b>ztest.ipynb</b>     --- for testing functions
+  * test notebook should not have first line of a cell ending with .py extension
+  
+# PYTHON (.py)
+* <b>helper.py</b>   --- auto-generated from helper.ipynb
 
-### get_rollingmax_std(ib, c, dte, durmult=3)
-* standard deviation to limit option contract generation
+* <b>nse.py</b>      --- auto-generated from nse_func.ipynb
+* <b>snp.py</b>      --- auto-generated from snp_func.ipynb
 
-### get_maxfallrise(ib, c, dte)
-* gets the maximum fall and rise with 52-week high and low
+* <b>nse_main.py</b>
+* <b>snp_main.py</b>
 
-### catch(func, handle=lambda e : e, * args, ** kwargs)
-* allows list comprehesion to ignore errors
+  
+# FIELD-LIST
+## nses.pickle
+['contract', 'lot', 'margin', 'undPrice']
 
-### save_open_orders(ib, fspath='.../data/snp/')
-* to save any open orders that are mass cancelled to enable margin checks
+## (symbol).pkl
+['symbol', 'expiration','strike', 'dte', 'undPrice', 'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 
+'std3', 'loStd3', 'hiStd3', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom']
 
-### get_portfolio(ib)
-* produces datafram with margins and assignments
-**DEPENDENCIES:** get_margins()
+## target.pickle
+['optId', 'symbol', 'right', 'expiration', 'dte', 'strike', 'undPrice',  'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 
+'std3', 'loStd3', 'hiStd3', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom', 'expPrice', 'remQty', 'expQty']
 
-### get_p_remqty(ib)
-* produces remaining quantities from existing positions based on margins.
-* zeros are to be blacklisted
-**DEPENDENCIES:** save_open_orders(), get_portfolio()
 
-### get_snp_options(ib, undContract, undPrice)  or get_nse_options(ib, undContract, undPrice)
-* produces a list of option in pickles
-**DEPENDENCIES:** get_maxfallrise(), get_rollingmax_std(), get_margins()
+# NSE - PROCESS
 
-### get_connected(market, trade_type)
+## Every weekend
+* Delete all files in data\nse
+* Generate nses and pickle it
+* Generate options and pickle them
+
+## Every day
+* Upload nses.pickle
+* Update undMargin and undPrices in it
+* Save back the nses.pickle
+
+* Upload the options pickles
+* Update the undPrice, optPrice, optMargin, rom
+
+* Generate the <b>target</b> options
+   * Check <b>remQty</b>
+   * Start with 1 option contract per strike+expiry
+   * Determine the appropriate <b>expPrice</b>
+   
+## Every minute
+* Update optPrice for the <b>target</b> options
+* If a trade fills:
+   * re-calculate <b>remQty</b>
+   * remove blacklists if any in the <b>target</b> option list
+   * increment the <b>expPrice</b> to a higher threshold to reduce risk / get better reward
+   
+************************************************************************************
+
+# NSE Functions
+
+### p_nses              *pickle underlyings*
+(ib) ---> <nses>.pkl 
+
+### p_nseopts        *pickle nse options* 
+(ib, undContract, undPrice, lotsize, margin) ---> <symbol>.pkl
+
+### upd_nses          *update nses - undPrice and margin*
+(ib, nses) ---> <nses>.pkl                                                   
+
+### upd_nseopt      *update nse options - price*
+(ib, symbol) ---> <symbol>.pkl
+
+### remqty_nse       *determine the remaining quantities*
+(ib, df_nses) ---> dictionary {symbol: remQty}
+
+### manage_nse      *manages nse by the minute*
+
+***********************************************************************************
+
+# Helper Functions
+
+### get_connected
+(market, trade_type) ---> ib as a connection object
 * connects to appropriate ib client
 
-### get_snp_remqty(ib, remqty_p, undContracts) or get_nse_remqty(ib, remqty_p, undContracts)
-* gets the remaining quantities of each underlying contract after checking with portfolio
+### get_dte
+(dt) ---> days as integer
+* gets number of days to expiry from date given
 
-## Scripts
+### get_rollingmax_std
+(ib, c, dte, durmult=3) ---> df_stdev DataFrame
+* standard deviation to limit option contract generation
+
+### get_maxfallrise
+(ib, c, dte) ---> (lo52, hi52, max_fall, max_rise) as a tuple
+* gets the maximum fall and rise with 52-week high and low
+
+### catch
+(func, handle=lambda e : e, * args, ** kwargs) ---> successful function or np.nan for exceptions
+* allows list comprehesion to ignore errors
+
+### save_open_orders
+(ib, fspath='.../data/snp/') ---> dfopen as a DataFrame of openorders. Also pickles to *_openorders.pkl*
+* saves any open orders that are mass cancelled to enable margin checks
+* this could be used to 'write-back' any openorders that were manually generated
+
+************************************************************************************
+
+# TO-DO LIST
+
+## Helper Functions
+
+### blks
+(ib, func)  ---> None
+* Performs the function in blocks to prevent Start/Stop threshold errors
+
+### logger
+* To differentiate between ib_insync's internal logs and INFO generated on purpose 
+**************************************************************************************
+
 
 
