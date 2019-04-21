@@ -35,16 +35,13 @@ def p_nses(ib):
     df_slm.ibSymbol = df_slm.ibSymbol.replace(ntoi)
     
     # !!!****DATA LIMITER***
-    df_slm = df_slm[df_slm.ibSymbol.isin(['PNB', 'JETAIRWAY', 'BANKNIFTY', 'NIFTY50'])]
+#     df_slm = df_slm[df_slm.ibSymbol.isin(['PNB', 'JETAIRWAY', 'BANKNIFTY'])]
     #________________________
 
     # separate indexes and equities, eliminate discards from df_slm
     indexes = ['NIFTY50', 'BANKNIFTY']
     discards = ['NIFTYMID5', 'NIFTYIT', 'LUPIN']
     equities = sorted([s for s in df_slm.ibSymbol if s not in indexes+discards])
-    
-    # !!!****DATA LIMITER***
-    equities = equities[0:2]
 
     symbols = equities+indexes
 
@@ -83,10 +80,12 @@ def p_nses(ib):
     margins = {k: max(v, float(m_dict_ib[k])) for k, v in m_dict.items() if k not in discards}
     
     # contracts, lots, margins, undPrices dataframe
-    df_clmu = pd.concat([pd.DataFrame.from_dict(qcs_dict, orient='index'), 
-               pd.DataFrame.from_dict(lots_dict, orient='index'), 
-               pd.DataFrame.from_dict(margins, orient='index'),
-               pd.DataFrame.from_dict(undPrices, orient='index')], axis=1, sort=False)
+    df_clmu = pd.DataFrame.from_dict(qcs_dict, orient='index', columns=['contract']).\
+             join(pd.DataFrame.from_dict(lots_dict, orient='index', columns=['lot'])).\
+             join(pd.DataFrame.from_dict(margins, orient='index', columns=['margin'])).\
+             join(pd.DataFrame.from_dict(undPrices, orient='index', columns=['undPrice']))
+    
+    df_clmu = df_clmu.dropna()  # to remove discards
 
     df_clmu.columns=['contract', 'lot', 'margin', 'undPrice']
     df_clmu.to_pickle(fspath+'_lot_margin.pickle')
@@ -265,57 +264,37 @@ def remqty_nse(ib):
     exchange = 'NSE'
     nse_assignment_limit = 1500000
 
-    # get the list of underlying contracts and dictionary of lots
-    qlm = get_nses(ib)
-    c_dict = qlm[0]       # {symbol: contract}
-    lots_dict = qlm[1]    # {symbol: lotsize}
-    margin_dict = qlm[2]  # {symbol: margin}
-    
-    undContracts = [v for k, v in c_dict.items()]
+    fspath = '../data/nse/'
+    df_und = pd.read_pickle(fspath+'_lot_margin.pickle').dropna()
 
-    tickers = ib.reqTickers(*undContracts)
-    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
-    
-    df_und = \
-        pd.DataFrame.from_dict(lots_dict, orient='index', columns=['lotsize']).\
-        join(pd.DataFrame.from_dict(undPrices, orient='index', columns=['undPrice'])).\
-        join(pd.DataFrame.from_dict(c_dict, orient='index', columns=['undContract'])).dropna()
-    
-    df_und = df_und.assign(remq=(nse_assignment_limit/(df_und.lotsize*df_und.undPrice)).astype('int')) # remaining quantities in entire nse
-    
+    df_und = df_und.assign(und_remq=
+                           (nse_assignment_limit/(df_und.lot*df_und.undPrice)).astype('int')) # remaining quantities in entire nse
+
     # from portfolio
     #_______________
-    
+
     p = util.df(ib.portfolio()) # portfolio table
-    
+
     # extract option contract info from portfolio table
     dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
     dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-    # get the underlying's margins, lots, prices and positions
-    pos_dict = dfp.groupby('symbol')['position'].sum().to_dict()
-    p_syms = {s for s in dfp.symbol}
-    p_undc = {s: ib.qualifyContracts(Stock(s, exchange)) for s in p_syms}   # {symbol: contracts} dictionary
-    p_undMargins = {u: margin_dict[u] for u in p_syms} # {symbol: undMargin} dictionary
-    p_undLots = {u: lots_dict[u] for u in p_syms}      # {symbol: lots} dictionary
-    p_undPrices = {u: undPrices[u] for u in p_syms}    #{symbol: undPrice} dictionary
-    
-    dfp1 = pd.DataFrame.from_dict(p_undc, orient='index', columns=['contract']). \
-        join(pd.DataFrame.from_dict(p_undMargins, orient='index', columns=['undmargin'])). \
-        join(pd.DataFrame.from_dict(p_undLots, orient = 'index', columns=['undLot'])). \
-        join(pd.DataFrame.from_dict(p_undPrices, orient='index', columns=['undPrice'])). \
-        join(pd.DataFrame.from_dict(pos_dict, orient='index', columns=['position']))
-    
-    dfp1 = dfp1.assign(qty=(dfp1.position/dfp1.undLot).astype('int'))
-    
-    # make the blacklist
-    #___________________
-    remqty_dict = pd.DataFrame(df_und.loc[dfp1.index].remq + dfp1.qty).to_dict()[0] # remq from portfolio
+    # join the position with underlying contract details
+    dfp1 = dfp.set_index('symbol').join(df_und, how='left').drop(['contract'], axis=1)
+    dfp1 = dfp1.assign(qty=(dfp1.position/dfp1.lot).astype('int'))
+
+    dfp1.loc[dfp1.und_remq == 0, 'und_remq'] = 1   # for very large priced shares such as AMZN, BKNG, etc
+
+    # get the remaining quantities
+    remqty_dict = (dfp1.groupby(dfp1.index)['qty'].sum()+
+                   dfp1.groupby(dfp1.index)['und_remq'].mean()).to_dict()
+
     remqty_dict = {k:(v if v > 0 else 0) for k, v in remqty_dict.items()} # portfolio's remq with negative values removed
-    blacklist = [k for k, v in remqty_dict.items() if v <=0] # the blacklist
-    df_und.remq.update(pd.Series(remqty_dict)) # replace all underlying with remq of portfolio
-    remqty = df_und.remq.to_dict() # dictionary
-    return remqty
+
+    df_und1 = df_und.assign(remqty=df_und.index.map(remqty_dict))
+    df_und1 = df_und1.assign(remqty=df_und1.remqty.fillna(df_und1.und_remq).astype('int'))
+    
+    return df_und1
 
 #_____________________________________
 

@@ -41,6 +41,9 @@
 * Delete all files in data\nse
 * Generate nses and pickle it
 * Generate options and pickle them
+### Programs
+p_nses
+p_nseopts
 
 ## Every day
 * Upload nses.pickle
@@ -54,6 +57,11 @@
    * Check <b>remQty</b>
    * Start with 1 option contract per strike+expiry
    * Determine the appropriate <b>expPrice</b>
+   
+### Programs
+upd_nses
+upd_opt (from helper)
+remqty_nse
    
 ## Every minute
 * Update optPrice for the <b>target</b> options
@@ -74,9 +82,6 @@
 
 ### upd_nses          *update nses - undPrice and margin*
 (ib, nses) ---> <nses>.pkl                                                   
-
-### upd_nseopt      *update nse options - price*
-(ib, symbol) ---> <symbol>.pkl
 
 ### remqty_nse       *determine the remaining quantities*
 (ib, df_nses) ---> dictionary {symbol: remQty}
@@ -111,6 +116,12 @@
 (ib, fspath='.../data/snp/') ---> dfopen as a DataFrame of openorders. Also pickles to *_openorders.pkl*
 * saves any open orders that are mass cancelled to enable margin checks
 * this could be used to 'write-back' any openorders that were manually generated
+
+### upd_opt      *update options - price*
+(ib, symbol) ---> <symbol>.pkl
+    
+### grp_opts      *group options based on sorts, strikes, puts and calls*
+(df)   ---> df
 
 ************************************************************************************
 

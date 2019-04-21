@@ -190,7 +190,6 @@ def save_open_orders(ib, fspath='../data/snp/'):
 #_____________________________________
 
 # upd_opt.py
-
 blk = 50
 def upd_opt(ib, dfopts):
     '''Updates the option prices
@@ -215,6 +214,31 @@ def upd_opt(ib, dfopts):
     df = dfopts.set_index('optId')
     df.optPrice.update(pd.Series(optPrices))
     df = df.assign(rom=df.optPrice*df.lotsize/df.optMargin*252/df.dte).sort_values('rom', ascending=False)
+    
+    return df
+
+#_____________________________________
+
+# grp_opts.py
+def grp_opts(df):
+    '''Groups options and sorts strikes by puts and calls
+    Arg: 
+       df as dataframe. Requires 'symbol', 'strike' and 'dte' fields in the df
+    Returns: sorted dataframe'''
+    
+    gb = df.groupby('right')
+
+    if 'C' in [k for k in gb.indices]:
+        df_calls = gb.get_group('C').reset_index(drop=True).sort_values(['symbol', 'dte', 'strike'], ascending=[True, False, True])
+    else:
+        df_calls =  pd.DataFrame([])
+
+    if 'P' in [k for k in gb.indices]:
+        df_puts = gb.get_group('P').reset_index(drop=True).sort_values(['symbol', 'dte', 'strike'], ascending=[True, False, False])
+    else:
+        df_puts =  pd.DataFrame([])
+
+    df = pd.concat([df_puts, df_calls]).reset_index(drop=True)
     
     return df
 
