@@ -14,12 +14,15 @@
   
 # PYTHON (.py)
 * <b>helper.py</b>   --- auto-generated from helper.ipynb
+Contains the common helper functions
 
 * <b>nse.py</b>      --- auto-generated from nse_func.ipynb
 * <b>snp.py</b>      --- auto-generated from snp_func.ipynb
+Contains nse, snp specific helper functions
 
 * <b>nse_main.py</b>
 * <b>snp_main.py</b>
+The main programs
 
   
 # FIELD-LIST
@@ -41,6 +44,7 @@
 * Delete all files in data\nse
 * Generate nses and pickle it
 * Generate options and pickle them
+
 ### Programs
 p_nses
 p_nseopts
@@ -86,7 +90,24 @@ remqty_nse
 ### remqty_nse       *determine the remaining quantities*
 (ib, df_nses) ---> dictionary {symbol: remQty}
 
-### manage_nse      *manages nse by the minute*
+### target_nse        *make a target of options with expected price*
+(ib)  --->  df
+* Filters the top 5 of each symbol whose strikes are beyond 52 week hi (for calls) and 52 week lo (for puts)
+* Removes blacklisted symbols through remaining quantity (remqty)
+* Generates expPrice based on minimum RoM set
+* For expPrice < 0.15 (minOptPrice) sets it to that
+* Computes the expected RoM from the expPrice
+* Pickles the target
+
+### manage_nse      *manages nse by the minute* (INCOMPLETE)
+* gets the target dataframe from target_nse
+* places the orders
+* pickles the trades in *_tradesDone.pickle*
+
+Should ideally:
+ - cancel the openOrders
+ - place the harvestOrders
+ - place the sowOrders
 
 ***********************************************************************************
 
@@ -122,6 +143,9 @@ remqty_nse
     
 ### grp_opts      *group options based on sorts, strikes, puts and calls*
 (df)   ---> df
+
+### get_prec       *get precision value w.r.t. a base entered*
+(v, base) ---> returns the precise value
 
 ************************************************************************************
 

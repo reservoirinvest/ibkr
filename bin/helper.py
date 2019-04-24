@@ -15,7 +15,7 @@ def get_connected(market, trade_type):
     hostdict = {('NSE', 'LIVE'): 3000,
                 ('NSE', 'PAPER'): 3001,
                 ('SNP', 'LIVE'): 1300,
-                ('SNP', 'PAPER'): 1301,}
+                ('SNP', 'PAPER'): 1301}
     
     host = hostdict[ip]
     
@@ -192,7 +192,7 @@ def save_open_orders(ib, fspath='../data/snp/'):
 # upd_opt.py
 blk = 50
 def upd_opt(ib, dfopts):
-    '''Updates the option prices
+    '''Updates the option prices and roms
     (ib) as connection object
     (dfopts) as DataFrame with option contracts and optPrice in it'''
     
@@ -238,9 +238,23 @@ def grp_opts(df):
     else:
         df_puts =  pd.DataFrame([])
 
-    df = pd.concat([df_puts, df_calls]).reset_index(drop=True)
+    df = pd.concat([df_puts, df_calls])
     
     return df
+
+#_____________________________________
+
+# get_prec.py
+# get precision, based on the base
+from math import floor, log10
+
+def get_prec(v, base):
+    '''gives the precision value
+    args:
+       (v) as value needing precision in float
+       (base) as the base value e.g. 0.05'''
+    
+    return round(round((v)/ base) * base, -int(floor(log10(base))))
 
 #_____________________________________
 

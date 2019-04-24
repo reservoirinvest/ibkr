@@ -1,29 +1,47 @@
 # p_nses.py
 import pandas as pd
+import requests
+from io import StringIO
+
 from ib_insync import *
 from helper import catch
 
-exchange = 'NSE'
-fspath = '../data/nse/'
+from nse_variables import *
 
 def p_nses(ib):
     '''Pickles nses underlying
     Arg: (ib) as connection object
-    Returns: tuple of following dicts: 
-        qualified underlying contracts nse underlying {symbol: contract}
-        lots {symbol: lots}
-        margins {symbol: margins}
-    '''
+    Returns: DataFrame of symbol, lot and margin with underlying info'''
+
+    #...get the lots
+    url = 'https://www.nseindia.com/content/fo/fo_mktlots.csv'
+    req = requests.get(url)
+    data = StringIO(req.text)
+    lots_df = pd.read_csv(data)
+    lots_df = lots_df[list(lots_df)[1:3]]
+    lots_df.columns = ['symbol', 'lotsize']
+
+    # clean up symbols and remove nan
+    lots_df = lots_df.assign(lotsize=pd.to_numeric(lots_df.iloc[:, 1], 
+                                                   errors='coerce')).dropna()
+    lots_df.symbol = lots_df.symbol.str.strip()
+
+    # convert to dictionary
+    d = lots_df.to_dict('index').values()
+    li =[list(d1.values()) for d1 in d]
+    lots_dict = {l[0]: int(l[1]) for l in li}
+
+    #...get the margins
     tp = pd.read_html('https://www.tradeplusonline.com/Equity-Futures-Margin-Calculator.aspx')
-
     df_tp = tp[1][2:].iloc[:, :-1]
-    df_tp = df_tp.iloc[:, [0,1,5]]
-    df_tp.columns=['nseSymbol', 'lot', 'margin']
+    df_tp = df_tp.iloc[:, [0,5]]
+    df_tp.columns=['nseSymbol', 'margin']
 
-    cols = df_tp.columns.drop('nseSymbol')
-    df_tp[cols] = df_tp[cols].apply(pd.to_numeric, errors='coerce') # convert lot and margin to numeric
+    df_tp.margin = df_tp.margin.apply(pd.to_numeric, errors='coerce', downcast='integer') # convert margin to numeric
 
-    df_slm = df_tp.copy()
+    df_tp = df_tp.assign(lot=df_tp.nseSymbol.map(lots_dict))
+
+    df_slm = df_tp.reset_index(drop=True)
 
     # Truncate to 9 characters for ibSymbol
     df_slm['ibSymbol'] = df_slm.nseSymbol.str.slice(0,9)
@@ -100,11 +118,7 @@ import pandas as pd
 from itertools import product, repeat
 
 from helper import get_dte, get_maxfallrise, get_rollingmax_std
-
-blk = 50
-mindte = 3
-maxdte = 60       # maximum days-to-expiry for options
-minstdmult = 3    # minimum standard deviation multiple to screen strikes. 3 is 99.73% probability
+from nse_variables import *
 
 def p_nseopts(ib, undContract, undPrice, lotsize, margin, fspath = '../data/nse/'):
     '''Pickles the option chains
@@ -168,6 +182,9 @@ def p_nseopts(ib, undContract, undPrice, lotsize, margin, fspath = '../data/nse/
 
     # qualify the options
     df_opt1 = pd.concat([df_puts, df_calls]).reset_index()
+    
+#     if df_opt1.empty:
+#         return None
 
     optipl = [Option(s, e, k, r, 'NSE') for s, e, k, r in zip(df_opt1.symbol, df_opt1.expiration, df_opt1.strike, df_opt1.right)]
 
@@ -175,6 +192,14 @@ def p_nseopts(ib, undContract, undPrice, lotsize, margin, fspath = '../data/nse/
 
     # qualify the contracts
     contracts = [ib.qualifyContracts(*s) for s in optblks]
+    
+    try:
+        [z for x in contracts for y in x for z in y] # If an Option is available, this will fail
+        if not [z for x in contracts for y in x for z in y]:  # Check if there is anything in the list
+            return None  # The list is empty in 3 levels!
+    except TypeError as e:
+        pass
+
     q_opt = [d for c in contracts for d in c]
 
     opt_iDict = {c.conId: c for c in q_opt}
@@ -295,6 +320,105 @@ def remqty_nse(ib):
     df_und1 = df_und1.assign(remqty=df_und1.remqty.fillna(df_und1.und_remq).astype('int'))
     
     return df_und1
+
+#_____________________________________
+
+# target_nse.py
+import pandas as pd
+import numpy as np
+
+from os import listdir
+
+from nse_func import remqty_nse
+from helper import grp_opts, upd_opt, get_prec
+
+from nse_variables import *
+
+def target_nse(ib):
+    '''Generates a target of naked options
+    Arg: (ib) as a connection object
+    Returns (df) a DataFrame of targets and pickles them'''
+    
+    util.logToFile(fspath+'_errors.log')  # create log file
+    
+    # get remaining quantities
+    dfrq = remqty_nse(ib) # remaining quantities df
+
+    cols = ['optId', 'symbol', 'right', 'expiration', 'dte', 'strike', 'undPrice', 
+    'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 'std3', 'loStd3', 'hiStd3', 
+    'lotsize', 'optPrice', 'optMargin', 'rom']
+
+    fs = listdir(fspath)
+
+    optsList = [f for f in fs if f[-3:] == 'pkl']
+
+    df1 = pd.concat([pd.read_pickle(fspath+f) 
+                     for f in optsList], axis=0, sort=True).reset_index(drop=True)[cols]
+    
+    # filter for high probability and margin
+    df2 = df1[((df1.strike > df1.hi52) | 
+               (df1.strike < df1.lo52))].sort_values('rom', ascending=False)
+
+    df2 = df2.assign(remqty=df2.symbol.map(dfrq.remqty.to_dict()))   # remaining quantities
+    df2 = df2[df2.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty = 0)
+
+    df2 = df2.groupby('symbol').head(nLargest) # get the top 5
+
+    # generate expPrice
+    df2 = df2.assign(expPrice=np.where(df2.rom < minRom, 
+                                       get_prec((df2.optPrice*minRom/df2.rom), 0.05), 
+                                       df2.optPrice+0.05))
+
+    df2.loc[df2.expPrice < minOptPrice, 'expPrice'] = minOptPrice # set to minimum optPrice
+    
+    df2 = df2.assign(expRom=df2.expPrice*df2.lotsize/df2.optMargin*252/df2.dte). \
+          sort_values('rom', ascending=False) # calculate the expected rom
+    
+    # set the expected Price
+    df2 = df2.assign(expPrice=np.maximum(df2.optPrice, get_prec(df2.expPrice*minexpRom/df2.expRom,0.05)))
+    
+    df2 = df2[df2.optMargin < 1e+308]  # Remove very large number in margin (1.7976931348623157e+308)
+    
+    df2.to_pickle(fspath+'_targetopts.pickle') # pickle the targets
+
+    df2 = grp_opts(df2)
+    
+    return df2
+
+#_____________________________________
+
+# nse_tgt_update.py
+def nse_tgt_update(ib):
+    '''Dynamically update target dataframe (2 mins for 400 rows) for:
+        - remaining quantity
+        - price
+    Arg: (ib) as connection object
+    Returns:
+       dft as DataFrame
+       But writes price and remq to _targetopts.pickle
+    '''
+    
+    util.logToFile(fspath+'_errors.log')  # create log file
+
+    dft = pd.read_pickle(fspath+'_targetopts.pickle')
+
+    # update remaining quantities
+    dfr = remqty_nse(ib)
+    dfr_dict = dfr.remqty.to_dict()
+    dft1 = dft.assign(remqty=dft.symbol.map(dfr_dict)).reset_index()
+
+    # update price and rom
+    dft1 = upd_opt(ib, dft1)
+    
+    # set the expected Price
+    dft1 = dft1.assign(expPrice=np.maximum(dft1.optPrice, get_prec(dft1.expPrice*minexpRom/dft1.expRom,0.05)))
+    
+    dft1 = dft1.assign(expRom=dft1.expPrice*dft1.lotsize/dft1.optMargin*252/dft1.dte). \
+            sort_values('rom', ascending=False) # calculate the expected rom
+    
+    dft1.to_pickle(fspath+'_targetopts.pickle') # write back to pickle
+    
+    return dft1
 
 #_____________________________________
 

@@ -1,0 +1,12 @@
+tradingdays = 252
+blk = 50
+mindte = 3
+maxdte = 60
+minstdmult = 3
+fspath = '../data/nse/'
+exchange = 'NSE'
+nse_assignment_limit = 1500000
+nLargest = 3
+minRom = 0.35
+minOptPrice = 0.15
+minexpRom = 0.55
