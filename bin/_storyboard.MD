@@ -7,10 +7,15 @@
 * <b>snp_func.ipynb</b>  --- for snp specific functions
 * <b>snp_main.ipynb</b>  --- for snp management and control
 
+* <b>xcute.ipynb</b>     --- for executing orders
+
 * <b>_jup2py.ipynb</b>   --- for auto-converting jupyter to py modules
 
+
+...the following files should not have first line ending with.py
+* <b>__scratchpad.ipynb</b> --- for scratchpad
 * <b>ztest.ipynb</b>     --- for testing functions
-  * test notebook should not have first line of a cell ending with .py extension
+
   
 # PYTHON (.py)
 * <b>helper.py</b>   --- auto-generated from helper.ipynb
@@ -24,6 +29,8 @@ Contains nse, snp specific helper functions
 * <b>snp_main.py</b>
 The main programs
 
+# JSON (.json)
+* <b>variables.json<b> containing variable assignments for the programs
   
 # FIELD-LIST
 ## nses.pickle
@@ -147,19 +154,15 @@ Should ideally:
 ### get_prec       *get precision value w.r.t. a base entered*
 (v, base) ---> returns the precise value
 
+### assign_var      *declarations to assign variables for nse / snp
+(market) ---> returns a variable list (varList).
+These need to be included on top of modules with the following code:
+	a = assign_var('nse')
+	for v in a:
+		exec(v)
+
 ************************************************************************************
 
-# TO-DO LIST
-
-## Helper Functions
-
-### blks
-(ib, func)  ---> None
-* Performs the function in blocks to prevent Start/Stop threshold errors
-
-### logger
-* To differentiate between ib_insync's internal logs and INFO generated on purpose 
-**************************************************************************************
 
 
 

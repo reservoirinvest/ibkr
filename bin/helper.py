@@ -53,14 +53,13 @@ def get_dte(dt):
 from math import sqrt
 import pandas as pd
 
-tradingdays = 252
-
-def get_rollingmax_std(ib, c, dte, durmult=3):
+def get_rollingmax_std(ib, c, dte, tradingdays, durmult=3):
     '''gets the rolling max standard deviation
     Args:
         (ib) as connection object
         (c) as contract object
         (dte) as int for no of days for expiry
+        (tradingdays) as int for trading days
         (durmult) no of samples to go backwards on
     Returns:
         maximum rolling standard deviation as int'''
@@ -255,6 +254,22 @@ def get_prec(v, base):
        (base) as the base value e.g. 0.05'''
     
     return round(round((v)/ base) * base, -int(floor(log10(base))))
+
+#_____________________________________
+
+# assign_var.py
+import json
+def assign_var(market):
+    '''Assign variables using exec
+    Arg: (market) as string <'nse'>|<'snp' 
+    Returns: VarList as a list of strings containing assignments
+             These will be executed upon using exec()'''
+
+    with open('variables.json', 'r') as fp:
+        varDict = json.load(fp)
+    
+    varList = [str(k+"='"+str(v)+"'") if type(v) is str else str(k+'='+str(v)) for k, v in varDict[market].items()]
+    return varList
 
 #_____________________________________
 
