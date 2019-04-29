@@ -273,3 +273,23 @@ def assign_var(market):
 
 #_____________________________________
 
+# hvstPricePct.py
+def hvstPricePct(dte):
+    '''Gets expected price percentage from DTE for harvesting trades.
+    Assumes max DTE to be 30 days.
+    Arg: (dte) days to expiry as an int 
+    Returns: expected harvest price percentage (xpp) as float
+    Ref: http://interactiveds.com.au/software/Linest-poly.xls ... for getting curve function
+    '''
+#     if dte is to be extracted from contract.lastTradeDateOrContractMonth
+#     dte = (util.parseIBDatetime(expiry) - datetime.datetime.now().date()).days
+    
+    if dte > 30:
+        dte = 30  # Forces the max DTE to be 30 days
+    
+    xpp = (103.6008 - 3.63457*dte + 0.03454677*dte*dte)/100
+    
+    return xpp
+
+#_____________________________________
+

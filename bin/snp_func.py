@@ -1,13 +1,23 @@
-# p_snps.py
+# imports.py
 import pandas as pd
+import requests
+from io import StringIO
+from itertools import product, repeat
+from os import listdir
+import logging
 
 from ib_insync import *
-from helper import assign_var
+
+from helper import *
 
 # do the assignments from JSON
 a = assign_var('snp')
 for v in a:
     exec(v)
+
+#_____________________________________
+
+# p_snps.py
 
 def p_snps(ib):
     '''Pickles snps underlying (1 minute)
@@ -15,7 +25,7 @@ def p_snps(ib):
     Returns: Dataframe of symbol, lot, margin with underlying info'''
 
     # exclusion list
-    excl = ['VXX','P', 'TSRO']
+    excl = ['VXX','P', 'TSRO', 'GOOGL']
 
     # Download cboe weeklies to a dataframe
     dls = "http://www.cboe.com/publish/weelkysmf/weeklysmf.xls"
@@ -78,16 +88,6 @@ def p_snps(ib):
 #_____________________________________
 
 # p_snpopts.py
-import numpy as np
-import pandas as pd
-from itertools import product, repeat
-
-from helper import get_dte, get_maxfallrise, get_rollingmax_std, assign_var
-
-# do the assignments from JSON
-a = assign_var('snp')
-for v in a:
-    exec(v)
 
 def p_snpopts(ib, undContract, undPrice, lotsize=100):
     '''Pickles the option chains
@@ -205,14 +205,6 @@ def p_snpopts(ib, undContract, undPrice, lotsize=100):
 
 # upd_snps.py
 
-from itertools import repeat
-
-from helper import assign_var
-# do the assignments from JSON
-a = assign_var('snp')
-for v in a:
-    exec(v)
-
 def upd_snps(ib, dfu):
     '''Updates the underlying snps
     Args:
@@ -246,13 +238,6 @@ def upd_snps(ib, dfu):
 #_____________________________________
 
 # remqty_snp.py
-import pandas as pd
-
-from helper import assign_var
-# do the assignments from JSON
-a = assign_var('snp')
-for v in a:
-    exec(v)
 
 def remqty_snp(ib):
     '''generates the remaining quantities dictionary
@@ -304,13 +289,6 @@ def remqty_snp(ib):
 
 #gen_expPrice.py
 
-from helper import assign_var
-
-# do the assignments from JSON
-a = assign_var('snp')
-for v in a:
-    exec(v)
-
 def gen_expPrice(ib, df):
     '''generates expected price
     Args: 
@@ -339,18 +317,6 @@ def gen_expPrice(ib, df):
 #_____________________________________
 
 # target_snp.py
-import pandas as pd
-import numpy as np
-
-from os import listdir
-
-from snp_func import remqty_snp
-from helper import grp_opts, upd_opt, get_prec, assign_var
-
-# do the assignments from JSON
-a = assign_var('snp')
-for v in a:
-    exec(v)
 
 def target_snp(ib):
     '''Generates a target of naked options
@@ -387,12 +353,6 @@ def target_snp(ib):
 #_____________________________________
 
 # snp_tgt_update.py
-from helper import assign_var
-
-# do the assignments from JSON
-a = assign_var('snp')
-for v in a:
-    exec(v)
 
 def snp_tgt_update(ib):
     '''Dynamically update target dataframe (2 mins for 400 rows) for:

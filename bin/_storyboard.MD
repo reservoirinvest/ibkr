@@ -1,5 +1,12 @@
 # NOTEBOOKS (.ipynb)
+
+## Common functions
 * <b>helper.ipynb</b>    --- for generic helper functions
+* <b>xcute.ipynb</b>     --- for executing orders
+
+* <b>_jup2py.ipynb</b>   --- for auto-converting jupyter to py modules
+
+## Market specific functions
 
 * <b>nse_func.ipynb</b>  --- for nse specific functions
 * <b>nse_main.ipynb</b>  --- for nse management and control
@@ -7,12 +14,11 @@
 * <b>snp_func.ipynb</b>  --- for snp specific functions
 * <b>snp_main.ipynb</b>  --- for snp management and control
 
-* <b>xcute.ipynb</b>     --- for executing orders
+...to ensure that the functions are picked up, the first line in the cell should be:
+ #<function_name>.py
 
-* <b>_jup2py.ipynb</b>   --- for auto-converting jupyter to py modules
+## Experiments & Junk files
 
-
-...the following files should not have first line ending with.py
 * <b>__scratchpad.ipynb</b> --- for scratchpad
 * <b>ztest.ipynb</b>     --- for testing functions
 
@@ -38,11 +44,11 @@ The main programs
 
 ## (symbol).pkl
 ['symbol', 'expiration','strike', 'dte', 'undPrice', 'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 
-'std3', 'loStd3', 'hiStd3', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom']
+'Std', 'loStd', 'hiStd', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom']
 
 ## target.pickle
 ['optId', 'symbol', 'right', 'expiration', 'dte', 'strike', 'undPrice',  'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 
-'std3', 'loStd3', 'hiStd3', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom', 'expPrice', 'remQty', 'expQty']
+'Std', 'loStd', 'hiStd', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom', 'expPrice', 'remQty', 'expQty']
 
 
 # NSE - PROCESS
@@ -74,7 +80,7 @@ upd_nses
 upd_opt (from helper)
 remqty_nse
    
-## Every minute
+## Every minute (Dynamic)
 * Update optPrice for the <b>target</b> options
 * If a trade fills:
    * re-calculate <b>remQty</b>
@@ -154,15 +160,14 @@ Should ideally:
 ### get_prec       *get precision value w.r.t. a base entered*
 (v, base) ---> returns the precise value
 
-### assign_var      *declarations to assign variables for nse / snp
+### assign_var      *declarations to assign variables for nse / snp*
 (market) ---> returns a variable list (varList).
 These need to be included on top of modules with the following code:
-	a = assign_var('nse')
-	for v in a:
-		exec(v)
+   a = assign_var('nse')
+   for v in a:
+         exec(v)
+         
+### hvstPricePct   *getting harvest price percentage, based on curve*
+(dte)  ---> returns the price percentage to harvest
 
 ************************************************************************************
-
-
-
-
