@@ -1,3 +1,28 @@
+# FLOW
+
+## Build (before trading day)
+Get the **Base** underlyings ---> Get the **Option** prices---> Get the **Remaining Quantities** --->
+---> Establish the **targets** with **expected price** and **expected rom**
+
+If there are no sufficient targets, adjust JSON **variables** and re-run the above
+
+Cancel **ALL Orders** ---> Place the **Closing Orders** ---> Place the **Opening Orders** for **targets**
+
+## Manage (*live* trading)
+
+1. If *InitMarginReq* is 85% of *NetLiquidation* **cancel ALL Opening orders** 
+
+2. Upon change in portfolio item (or) order fill event:
+
+   Check *InitMarginReq* against *NetLiquidation*. 
+   If it is ok:
+      For the **symbol filled** --->**Cancel openorders** ---> Place **Closing orders** --> Recalculate **price** and **margins** ---> 
+      Recalculate **Remaining Quantities** ---> Update the **targets** ---> Place **Opening Orders** if not blacklisted
+      
+   Else **cancel ALL Opening orders**
+
+***********************************************************
+
 # NOTEBOOKS (.ipynb)
 
 ## Common functions
@@ -22,89 +47,64 @@
 * <b>__scratchpad.ipynb</b> --- for scratchpad
 * <b>ztest.ipynb</b>     --- for testing functions
 
+****************************************************
   
 # PYTHON (.py)
 * <b>helper.py</b>   --- auto-generated from helper.ipynb
-Contains the common helper functions
+   ...contains the common helper functions
 
 * <b>nse.py</b>      --- auto-generated from nse_func.ipynb
 * <b>snp.py</b>      --- auto-generated from snp_func.ipynb
-Contains nse, snp specific helper functions
+   ...contains nse, snp specific helper functions
 
 * <b>nse_main.py</b>
 * <b>snp_main.py</b>
-The main programs
+  ...contains main programs
 
-# JSON (.json)
+*****************************************************
+
+# JSON
 * <b>variables.json<b> containing variable assignments for the programs
   
 # FIELD-LIST
-## nses.pickle
-['contract', 'lot', 'margin', 'undPrice']
 
-## (symbol).pkl
-['symbol', 'expiration','strike', 'dte', 'undPrice', 'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 
-'Std', 'loStd', 'hiStd', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom']
+## base.pickle
 
-## target.pickle
-['optId', 'symbol', 'right', 'expiration', 'dte', 'strike', 'undPrice',  'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 
-'Std', 'loStd', 'hiStd', 'optId', 'right', 'optPrice', 'lotsize', 'optMargin', 'rom', 'expPrice', 'remQty', 'expQty']
+Contains qualified underlyings with strikes, expiries and lots
+['symbol', 'expiration', 'strike', 'right', 'lot', 'und_remq', 'dte', 'cid', 
+'undPrice', 'lo52', 'hi52', 'Fall', 'Rise', 'Std',  'loStd', 'hiStd']
 
+## opts.pickle
 
-# NSE - PROCESS
+Contains computed margin and rom for the option
+['symbol', 'expiration', 'strike', 'right', 'lot', 'dte', 'cid', 'undPrice', 'lo52', 'hi52', 
+'Fall', 'Rise', 'Std', 'loStd', 'hiStd', 'optId', 'optPrice', 'margin', 'rom']
 
-## Every weekend
-* Delete all files in data\nse
-* Generate nses and pickle it
-* Generate options and pickle them
+## targets.pickle
 
-### Programs
-p_nses
-p_nseopts
-
-## Every day
-* Upload nses.pickle
-* Update undMargin and undPrices in it
-* Save back the nses.pickle
-
-* Upload the options pickles
-* Update the undPrice, optPrice, optMargin, rom
-
-* Generate the <b>target</b> options
-   * Check <b>remQty</b>
-   * Start with 1 option contract per strike+expiry
-   * Determine the appropriate <b>expPrice</b>
-   
-### Programs
-upd_nses
-upd_opt (from helper)
-remqty_nse
-   
-## Every minute (Dynamic)
-* Update optPrice for the <b>target</b> options
-* If a trade fills:
-   * re-calculate <b>remQty</b>
-   * remove blacklists if any in the <b>target</b> option list
-   * increment the <b>expPrice</b> to a higher threshold to reduce risk / get better reward
+Same as opts, but cleaned up for margin and rom with remqty, expPrice and expRom
+['symbol', 'expiration', 'strike', 'right', 'lot', 'dte', 'cid', 'undPrice', 'lo52', 'hi52', 
+'Fall', 'Rise', 'Std', 'loStd', 'hiStd', 'optId', 'optPrice', 'margin', 'rom', 'remqty', 'expPrice', 'expRom']
    
 ************************************************************************************
 
 # NSE Functions
 
-### p_nses              *pickle underlyings*
-(ib) ---> <nses>.pkl 
+### imports.py
+Has all the imports needed
+Assigns variables from JSON
 
-### p_nseopts        *pickle nse options* 
-(ib, undContract, undPrice, lotsize, margin) ---> <symbol>.pkl
+### base.py                 *creates the base.pickle*
+(ib) ---> base.pickle
 
-### upd_nses          *update nses - undPrice and margin*
-(ib, nses) ---> <nses>.pkl                                                   
+### opts.py                 *computes margin and rom* 
+(ib) ---> opts.pickle
 
-### remqty_nse       *determine the remaining quantities*
-(ib, df_nses) ---> dictionary {symbol: remQty}
+### remqty_nse.py     *determine the remaining quantities*
+(ib) ---> dataframe with symbol: remqty. Indexed on symbol
 
-### target_nse        *make a target of options with expected price*
-(ib)  --->  df
+### targets.py              *generates the targets*
+(ib) ---> targets.pickle                                                  
 * Filters the top 5 of each symbol whose strikes are beyond 52 week hi (for calls) and 52 week lo (for puts)
 * Removes blacklisted symbols through remaining quantity (remqty)
 * Generates expPrice based on minimum RoM set
@@ -112,15 +112,14 @@ remqty_nse
 * Computes the expected RoM from the expPrice
 * Pickles the target
 
-### manage_nse      *manages nse by the minute* (INCOMPLETE)
-* gets the target dataframe from target_nse
-* places the orders
-* pickles the trades in *_tradesDone.pickle*
+### gen_expPrice.py    *generates expected price & expected rom*
+(ib) ---> repickles target.pickle
 
-Should ideally:
- - cancel the openOrders
- - place the harvestOrders
- - place the sowOrders
+### upd.py                   *update nses - undPrice and margin*
+(ib) ---> targets.pickle
+
+### watchlists.py         *generate watch-list and target-list in csv*
+(ib)  ---> watch.csv targets.csv
 
 ***********************************************************************************
 

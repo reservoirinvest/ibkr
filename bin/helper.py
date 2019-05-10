@@ -237,7 +237,7 @@ def grp_opts(df):
     else:
         df_puts =  pd.DataFrame([])
 
-    df = pd.concat([df_puts, df_calls])
+    df = pd.concat([df_puts, df_calls]).reset_index(drop=True)
     
     return df
 
@@ -268,7 +268,9 @@ def assign_var(market):
     with open('variables.json', 'r') as fp:
         varDict = json.load(fp)
     
-    varList = [str(k+"='"+str(v)+"'") if type(v) is str else str(k+'='+str(v)) for k, v in varDict[market].items()]
+    varList = [str(k+"='"+str(v)+"'")  if type(v) is str
+               else (str(k+'='+ str(v))) if type(v) is list
+               else str(k+'='+str(v)) for k, v in varDict[market].items()]
     return varList
 
 #_____________________________________

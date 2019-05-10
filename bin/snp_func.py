@@ -180,7 +180,8 @@ def p_snpopts(ib, undContract, undPrice, lotsize=100):
     orders = [Order(action='SELL', orderType='MKT', totalQuantity=1, whatIf=True)]*len(opts)
     margins = [ib.whatIfOrder(c, o).initMarginChange for c, o in zip(opts, orders)]
     df_opt1 = df_opt1.assign(optMargin = margins)
-    df_opt1 = df_opt1.assign(optMargin = abs(pd.to_numeric(df_opt1.optMargin).astype('int'))) # convert to int
+    df_opt1 = df_opt1.assign(optMargin = abs(pd.to_numeric(df_opt1.optMargin).astype('float'))) # convert to float
+    df_opt1 = df_opt1[df_opt1.optMargin < 1e7] # remove options with very large margins
 
     cols=['symbol', 'expiration', 'strike']
     df_opt2 = pd.merge(df4, df_opt1, on=cols).drop('cid', 1).reset_index(drop=True)
