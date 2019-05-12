@@ -48,12 +48,12 @@ def get_dte(dt):
 
 #_____________________________________
 
-# get_rollingmax_std.py
+# get_maxfallrisestd.py
 
 from math import sqrt
 import pandas as pd
 
-def get_rollingmax_std(ib, c, dte, tradingdays, durmult=3):
+def get_maxfallrisestd(ib, c, dte, tradingdays, durmult=3):
     '''gets the rolling max standard deviation
     Args:
         (ib) as connection object
@@ -62,46 +62,9 @@ def get_rollingmax_std(ib, c, dte, tradingdays, durmult=3):
         (tradingdays) as int for trading days
         (durmult) no of samples to go backwards on
     Returns:
-        maximum rolling standard deviation as int'''
+        hi52, lo52, fall, rise, std as tuple'''
 
-    durStr = str(durmult*dte) + ' D' # Duration String
-    
-    # Extract the history
-    hist = ib.reqHistoricalData(contract=c, endDateTime='', 
-                                    durationStr=durStr, barSizeSetting='1 day',  
-                                                whatToShow='Trades', useRTH=True)
-    df = util.df(hist)
-    df.insert(0, column='symbol', value=c.symbol)
-
-    df_ohlc = df.set_index('date').sort_index(ascending = False)
-
-    # get cumulative standard deviation
-    df_stdev = pd.DataFrame(df_ohlc['close'].expanding(1).std(ddof=0))
-    df_stdev.columns = ['stdev']
-
-    # get cumulative volatility
-    df_vol = pd.DataFrame(df_ohlc['close'].pct_change().expanding(1).std(ddof=0)*sqrt(tradingdays))
-    df_vol.columns = ['volatility']
-
-    df_ohlc1 = df_ohlc.join(df_vol)
-
-    df_ohlc2 = df_ohlc1.join(df_stdev)
-
-    return df_stdev.stdev.max()
-
-#_____________________________________
-
-# get_maxfallrise.py
-def get_maxfallrise(ib, c, dte):
-    '''get the maximum rise, fall for rolling window of dte and lo52, hi52
-    Args:
-       (ib) as connection object
-       (c) as the underlying contract object
-       (dte) as int for days to expiry of a contract
-    Returns:
-       (lo52, hi52, max_fall, max_rise) tuple of floats'''
-    
-    
+    # determine the low52, hi52, fall, rise
     hist = ib.reqHistoricalData(contract=c, endDateTime='', 
                                         durationStr='365 D', barSizeSetting='1 day',  
                                                     whatToShow='Trades', useRTH=True)
@@ -117,8 +80,28 @@ def get_maxfallrise(ib, c, dte):
     max_rise = df1[df1.pctchange>0].delta.max()
     hi52 = df1.high.max()
     lo52 = df1.low.min()
+
+    lhfr = (lo52, hi52, max_fall, max_rise)
+
+    # for std, keep only durmult*dte
+    df = df_ohlc.tail(durmult*dte)
+    df_ohlc = df.sort_index(ascending = False)
+
+    # get cumulative standard deviation
+    df_stdev = pd.DataFrame(df_ohlc['close'].expanding(1).std(ddof=0))
+    df_stdev.columns = ['stdev']
+
+    # get cumulative volatility
+    df_vol = pd.DataFrame(df_ohlc['close'].pct_change().expanding(1).std(ddof=0)*sqrt(tradingdays))
+    df_vol.columns = ['volatility']
+
+    df_ohlc1 = df_ohlc.join(df_vol)
+
+    df_ohlc2 = df_ohlc1.join(df_stdev)
+
+    ret = lhfr+(df_ohlc2.stdev.max(),)
     
-    return(lo52, hi52, max_fall, max_rise)
+    return ret
 
 #_____________________________________
 

@@ -1,6 +1,7 @@
 {
     "nse": {
         "blk": 50,
+		"durmult": 3,
         "callstdmult": 3,
 		"putstdmult": 2,		
         "exchange": "NSE",
@@ -17,6 +18,7 @@
     },
     "snp": {
         "blk": 50,
+		"durmult": 3,
         "callstdmult": 3,
 		"putstdmult": 2,
         "exchange": "SMART",

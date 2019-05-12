@@ -5,6 +5,9 @@ from io import StringIO
 from itertools import product, repeat
 from os import listdir
 import logging
+from bs4 import BeautifulSoup
+import csv
+from collections import defaultdict
 
 from ib_insync import *
 
@@ -17,13 +20,12 @@ for v in a:
 
 #_____________________________________
 
-# p_snps.py
-
-def p_snps(ib):
+# opts.py
+def opts(ib):
     '''Pickles snps underlying (1 minute)
     Arg: (ib) as connection object
-    Returns: Dataframe of symbol, lot, margin with underlying info'''
-
+     Returns: None. But pickles to opts.pickle'''
+    
     # exclusion list
     excl = ['VXX','P', 'TSRO', 'GOOGL']
 
@@ -78,127 +80,105 @@ def p_snps(ib):
     df_clmu = df_clmu.assign(margin=abs(pd.to_numeric(df_clmu.margin)).astype('int')) # convert to int
 
     df_clmu.columns=['contract', 'margin', 'undPrice', 'lot']
-    
-    df_clmu = df_clmu.sort_index()
-    
-    df_clmu.to_pickle(fspath+'_lot_margin.pickle')
-    
-    return df_clmu
 
-#_____________________________________
+#     #######    DATA LIMITER !!!!    #######
+#     df_clmu = df_clmu[:3]
+#     qcs_dict = {k: qcs_dict[k] for k in list(qcs_dict)[:3]}
+#     #######################################
 
-# p_snpopts.py
+    # get undId
+    df_clmu = df_clmu.assign(undId=[c.conId for c in df_clmu.contract])
 
-def p_snpopts(ib, undContract, undPrice, lotsize=100):
-    '''Pickles the option chains
-    Args:
-        (ib) ib connection as object
-        (undContract) underlying contract as object
-        (undPrice) underlying contract price as float
-        (margin) margin of undContract (used as a surrogate for option)
-        (lotsize) lot-size as float is 100'''
-    
-    symbol = undContract.symbol
-    
-    chains = ib.reqSecDefOptParams(underlyingSymbol = symbol,
-                         futFopExchange = '',
-                         underlyingSecType = undContract.secType,
-                         underlyingConId= undContract.conId)
+    # reset index
+    df_clmu = df_clmu.rename_axis('symbol').reset_index()
 
-    xs = [set(product(c.expirations, c.strikes)) for c in chains if c.exchange == exchange]
+    # get the chains
+    qundc = [v for k, v in qcs_dict.items()]
 
-    expirations = [i[0] for j in xs for i in j]
-    strikes = [i[1] for j in xs for i in j]
-    dflength = len(expirations)
+    rawchains = {c: ib.reqSecDefOptParams(underlyingSymbol=c.symbol, 
+                                          underlyingSecType='STK', 
+                                          underlyingConId=c.conId, 
+                                          futFopExchange='') 
+                 for c in qundc}
 
-    #...first df with symbol, strike and expiry
-    df1 = pd.DataFrame({'cid': pd.Series(np.repeat(undContract.conId,dflength)), 
-                  'symbol': pd.Series(np.repeat(symbol,dflength)),
-                  'expiration': expirations,
-                  'strike': strikes,
-                  'dte': [get_dte(e) for e in expirations],
-                  'undPrice': pd.Series(np.repeat(undPrice,dflength))})
+    chains = {k.symbol: j for k, v in rawchains.items() for j in v if j.exchange == exchange}
 
-    df2 = df1[(df1.dte > mindte) & (df1.dte < maxdte)].reset_index(drop=True)  # limiting dtes
+    # integrate the strikes and expiries
+    exps = {k: v.expirations for k, v in chains.items()}
+    strikes = {k: v.strikes for k, v in chains.items()}
 
-    dtes = df2.dte.unique().tolist()
+    es = [list(product([k1], v1, v2)) for k1, v1 in exps.items() for k2, v2 in strikes.items() if k1 == k2]
 
-    #...get the max fall / rise for puts / calls
-    maxFallRise = {d: get_maxfallrise(ib, c, d) for c, d in zip(repeat(undContract), dtes)}
+    df_es = pd.DataFrame([s for r in es for s in r], columns=['symbol', 'expiration', 'strike'])
 
-    df3 = df2.join(pd.DataFrame(df2.dte.map(maxFallRise).tolist(), index=df2.index, columns=['lo52', 'hi52', 'Fall', 'Rise']))
+    # make the dataframe to be in between min and max dte
+    df_es = df_es.assign(dte=[get_dte(d) for d in df_es.expiration])
+    df_es = df_es[df_es.dte.between(mindte, maxdte)].reset_index(drop=True)
 
-    df4 = df3.assign(loFall = df3.undPrice-df3.Fall, hiRise = df3.undPrice+df3.Rise)
+    # mega dataframe
+    df_mega = pd.merge(df_clmu, df_es)
 
-    Std = {d: get_rollingmax_std(ib, c, d, tradingdays) for c, d in zip(repeat(undContract), dtes)}
+    # get the max fall and rise
 
-    df4['Std'] = df4.dte.map(Std)
+    df_frs = df_mega.drop('strike', 1).drop_duplicates() # for fall rise std
+    mfrs = [((s, d) + get_maxfallrisestd(ib=ib, c=c, dte=d, tradingdays=tradingdays, durmult=durmult)) for s, c, d in zip(df_frs.symbol, df_frs.contract, df_frs.dte)]
 
-    df4['loStd'] = df4.undPrice - df4['Std'].multiply(putstdmult)
-    df4['hiStd'] = df4.undPrice + df4['Std'].multiply(callstdmult)
+    df_mfrs = pd.DataFrame(mfrs, columns=['symbol', 'dte', 'lo52', 'hi52', 'Fall', 'Rise', 'Std'])
+
+    df_mega = df_mega.set_index(['symbol', 'dte']).join(df_mfrs.set_index(['symbol', 'dte'])).reset_index()
+    df_mega['loStd'] = df_mega.undPrice - df_mega['Std'].multiply(putstdmult)
+    df_mega['hiStd'] = df_mega.undPrice + df_mega['Std'].multiply(callstdmult)
 
     # flter puts and calls by standard deviation
-    df_puts = df4[df4.strike < df4.loStd]
-    df_calls = df4[df4.strike > df4.hiStd]
+    df_puts = df_mega[df_mega.strike < df_mega.loStd]
+    df_calls = df_mega[df_mega.strike > df_mega.hiStd]
 
     df_puts = df_puts.assign(right='P')
     df_calls = df_calls.assign(right='C')
 
     # qualify the options
-    df_opt1 = pd.concat([df_puts, df_calls]).reset_index()
+    df = pd.concat([df_puts, df_calls]).reset_index(drop=True).drop('contract', axis=1)
 
-    optipl = [Option(s, e, k, r, exchange) for s, e, k, r in zip(df_opt1.symbol, df_opt1.expiration, df_opt1.strike, df_opt1.right)]
-
+    # qualify the option contracts
+    optipl = [Option(s, e, k, r, exchange) for s, e, k, r in zip(df.symbol, df.expiration, df.strike, df.right)]
     optblks = [optipl[i: i+blk] for i in range(0, len(optipl), blk)] # blocks of optipl
+    cblks = [ib.qualifyContracts(*s) for s in optblks]
+    contracts = [z for x in cblks for z in x]
 
-    # qualify the contracts
-    contracts = [ib.qualifyContracts(*s) for s in optblks]
-    
-    try:
-        [z for x in contracts for y in x for z in y] # If an Option is available, this will fail
-        if not [z for x in contracts for y in x for z in y]:  # Check if there is anything in the list
-            return None  # The list is empty in 3 levels!
-    except TypeError as e:
-        pass
+    # prepare the qualified options dataframe
+    dfq = util.df(contracts).iloc[:, 1:6]
+    dfq.columns=['optId', 'symbol', 'expiration', 'strike', 'right'] # rename columns
+    dfq = dfq.set_index(['symbol', 'expiration', 'strike', 'right']) # set index
 
-    q_opt = [d for c in contracts for d in c]
+    # join the qualified options with main dataframe. Remove those without conId
+    df_opt = df.set_index(['symbol', 'expiration', 'strike', 'right']).join(dfq).dropna()
 
-    opt_iDict = {c.conId: c for c in q_opt}
+    # convert optId to int for price and margin
+    df_opt = df_opt.assign(optId=df_opt.optId.astype('int32'))
 
-    df_opt1 = util.df(q_opt).loc[:, ['conId', 'symbol', 'lastTradeDateOrContractMonth', 'strike', 'right']]
+    # get the prices
+    opt_tickers = ib.reqTickers(*contracts)
+    optPrices = {t.contract.conId: t.marketPrice() for t in opt_tickers}
 
-    df_opt1 = df_opt1.rename(columns={'lastTradeDateOrContractMonth': 'expiration', 'conId': 'optId'})
+    df_opt = df_opt.assign(optPrice=df_opt.optId.map(optPrices))
+    df_opt = df_opt[~(df_opt.optPrice <= 0)].reset_index() # remove options without a price
 
-    opt_tickers = ib.reqTickers(*q_opt)
-
-    # get the price
-    df_opt1 = df_opt1.assign(optPrice = [t.marketPrice() for t in opt_tickers])
-    df_opt1 = df_opt1[df_opt1.optPrice > 0.0]
+    #... get the margins
+    # {conId: contract} dictionary
+    c_dict = {c.conId: c for c in contracts if c.conId in list(df_opt.optId)}
+    orders = [Order(action='SELL', orderType='MKT', totalQuantity=1, whatIf=True)]*len(c_dict)
 
     # get the margins
-    opts = df_opt1.optId.map(opt_iDict)
-    orders = [Order(action='SELL', orderType='MKT', totalQuantity=1, whatIf=True)]*len(opts)
-    margins = [ib.whatIfOrder(c, o).initMarginChange for c, o in zip(opts, orders)]
-    df_opt1 = df_opt1.assign(optMargin = margins)
-    df_opt1 = df_opt1.assign(optMargin = abs(pd.to_numeric(df_opt1.optMargin).astype('float'))) # convert to float
-    df_opt1 = df_opt1[df_opt1.optMargin < 1e7] # remove options with very large margins
+    margins = [ib.whatIfOrder(c, o).initMarginChange for c, o in zip(c_dict.values(), orders)]
 
-    cols=['symbol', 'expiration', 'strike']
-    df_opt2 = pd.merge(df4, df_opt1, on=cols).drop('cid', 1).reset_index(drop=True)
+    df_opt = df_opt.assign(optMargin = margins)
+    df_opt = df_opt.assign(optMargin = abs(pd.to_numeric(df_opt.optMargin).astype('float'))) # convert to float
+    df_opt = df_opt[df_opt.optMargin < 1e7] # remove options with very large margins
 
-    # Get lotsize and margin for the underlying symbol
-    df_opt2 = df_opt2.assign(lotsize = lotsize)
+    # get the rom
+    df_opt = df_opt.assign(rom=df_opt.optPrice*df_opt.lot/df_opt.optMargin*365/df_opt.dte).sort_values('rom', ascending=False)
 
-    df_opt2 = df_opt2.assign(rom=df_opt2.optPrice*df_opt2.lotsize/df_opt2.optMargin*365/df_opt2.dte).sort_values('rom', ascending=False)
-    
-    # arrange the columns
-    cols = ['optId', 'symbol', 'right', 'expiration', 'dte', 'strike', 'undPrice', 
-            'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 'Std', 'loStd', 'hiStd', 
-            'lotsize', 'optPrice', 'optMargin', 'rom']
-
-    df_opt2 = df_opt2[cols]
-    
-    df_opt2.to_pickle(fspath+symbol+'.pkl')
+    df_opt.to_pickle(fspath+'opts.pickle')
     
     return None
 
@@ -245,21 +225,8 @@ def remqty_snp(ib):
     Args:
         (ib) as connection object
     Returns:
-        remqty as a dictionary of {symbol: remqty}
-        '''
-    df_und = pd.read_pickle(fspath+'_lot_margin.pickle').dropna()
-
-    df_und = df_und.assign(und_remq=
-                           (snp_assignment_limit/(df_und.lot*df_und.undPrice)).astype('int')) # remaining quantities in entire snp
-
-    df_und = pd.read_pickle(fspath+'_lot_margin.pickle').dropna()
-
-    df_und = df_und.assign(und_remq=
-                           (snp_assignment_limit/(df_und.lot*df_und.undPrice)).astype('int')) # remaining quantities in entire snp
-
-    df_und.loc[df_und.und_remq == 0, 'und_remq'] = 1   # for very large priced shares such as AMZN, BKNG, etc
-
-    # from portfolio
+        dfrq as a datframe with symbol and remaining quantities
+        '''    # from portfolio
     #_______________
 
     p = util.df(ib.portfolio()) # portfolio table
@@ -268,28 +235,62 @@ def remqty_snp(ib):
     dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
     dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-    # join the position with underlying contract details
-    dfp1 = dfp.set_index('symbol').join(df_und, how='left').drop(['contract'], axis=1)
-    dfp1 = dfp1.assign(qty=(dfp1.position).astype('int'))
+    # get the total position
+    dfp1 = dfp.groupby('symbol').sum()['position']
 
+    # from options pickle
+    #____________________
 
+    # get the options
+    df_opt = pd.read_pickle(fspath + 'opts.pickle')
+    df_opt = df_opt.assign(und_remq=(snp_assignment_limit/(df_opt.lot*df_opt.undPrice)).astype('int')) # remaining quantities in entire snp
 
-    # get the remaining quantities
-    remqty_dict = (dfp1.groupby(dfp1.index)['qty'].sum()+
-                   dfp1.groupby(dfp1.index)['und_remq'].mean()).to_dict()
+    # compute the remaining quantities
+    df_opt1 = df_opt.groupby('symbol').first()[['lot', 'margin', 'und_remq']]
 
-    remqty_dict = {k:(v if v > 0 else 0) for k, v in remqty_dict.items()} # portfolio's remq with negative values removed
+    df_opt2 = df_opt1.join(dfp1).fillna(0).astype('int')
+    df_opt2 = df_opt2.assign(remqty=df_opt2.und_remq+(df_opt2.position/df_opt2.lot).astype('int'))
 
-    df_und1 = df_und.assign(remqty=df_und.index.map(remqty_dict))
+    dfrq = df_opt2[['remqty']]
 
-    df_und1 = df_und1.assign(remqty=df_und1.remqty.fillna(df_und1.und_remq).astype('int'))
-    
-    return df_und1
+    return dfrq
 
 #_____________________________________
 
-#gen_expPrice.py
+# targets.py
+def targets(ib):
+    '''Generates a target of naked options
+    Arg: (ib) as a connection object
+    Returns (df) a DataFrame of targets with expPrice and pickles them'''
+    
+    # get remaining quantities
+    dfrq = remqty_snp(ib) # remaining quantities df
 
+    df1 = pd.read_pickle(fspath+'opts.pickle')
+
+    # filter for high probability and margin
+    df2 = df1[((df1.strike > df1.hi52) | 
+               (df1.strike < df1.lo52))].sort_values('rom', ascending=False)
+
+    df2 = df2[df2.margin < 1e+308]  # Remove very large number in margin (1.7976931348623157e+308)
+
+    df2 = df2.assign(remqty=df2.symbol.map(dfrq.remqty.to_dict()))   # remaining quantities
+    df2 = df2[df2.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty <= 0)
+
+    df2 = df2.groupby('symbol').head(nLargest) # get the top 3
+
+    # generate expPrice
+    df3 = gen_expPrice(ib, df2)
+    
+    df3.to_pickle(fspath+'targets.pickle') # pickle the targets
+    
+    watchlist(ib) # creates the watchlist
+    
+    return df3
+
+#_____________________________________
+
+# gen_expPrice.py
 def gen_expPrice(ib, df):
     '''generates expected price
     Args: 
@@ -297,183 +298,236 @@ def gen_expPrice(ib, df):
         (df) as the target options from _targetopt.pickle
     Returns:
         updated df with new recalculated expPrice and expRom
-        And pickles the target options
     '''
-    
     df = df.assign(expPrice=np.where(df.rom < minRom, 
-                                   get_prec((df.optPrice*minRom/df.rom), 0.01), 
-                                   df.optPrice*1.1))
+                                       get_prec((df.optPrice*minRom/df.rom), 0.05), 
+                                       df.optPrice+0.05))
 
     df.loc[df.expPrice < minOptPrice, 'expPrice'] = minOptPrice # set to minimum optPrice
-
-    df = df.assign(expRom=df.expPrice*df.lotsize/df.optMargin*365/df.dte). \
+    
+    df = df.assign(expRom=df.expPrice*df.lot/df.margin*365/df.dte). \
           sort_values('rom', ascending=False) # calculate the expected rom
     
-    df = grp_opts(df)
+    df = df.dropna().reset_index(drop=True)
     
-    df.to_pickle(fspath+'_targetopts.pickle') # pickle the targets
+    #... Establish sowing quantities
+    
+    putFall = (df.right == 'P') & ((df.undPrice - df.strike) > df.Fall)
+    callRise = (df.right == 'C') & ((df.strike - df.undPrice) > df.Rise)
+
+    df = df.assign(qty=np.where(callRise | putFall, df.remqty, 1))
+    
+    df = grp_opts(df)
 
     return df
 
 #_____________________________________
 
-# target_snp.py
-
-def target_snp(ib):
-    '''Generates a target of naked options
-    Arg: (ib) as a connection object
-    Returns (df) a DataFrame of targets and pickles them'''
+# upd.py
+def upd(ib, dfopt):
+    '''Updates the snp options' price and margin
+    Takes 3 mins for 450 options
+    Args:
+       (ib) as connection object
+       (dfopt) as the dataframe from targets.pickle
+    Returns: DataFrame with updated undPrice and margin'''
     
-    # get remaining quantities
-    dfrq = remqty_snp(ib) # remaining quantities df
+    # get the contracts
+    cs=[Contract(conId=c) for c in dfopt.optId]
 
-    cols = ['optId', 'symbol', 'right', 'expiration', 'dte', 'strike', 'undPrice', 
-    'lo52', 'hi52', 'Fall', 'Rise', 'loFall', 'hiRise', 'Std', 'loStd', 'hiStd', 
-    'lotsize', 'optPrice', 'optMargin', 'rom']
+    blks = [cs[i: i+blk] for i in range(0, len(cs), blk)]
+    cblks = [ib.qualifyContracts(*s) for s in blks]
+    contracts = [z for x in cblks for z in x]
 
-    fs = listdir(fspath)
+    # update prices
+    tickers = ib.reqTickers(*contracts)
+    optPrices = {t.contract.conId: t.marketPrice() for t in tickers} # {symbol: undPrice}
 
-    optsList = [f for f in fs if f[-3:] == 'pkl']
+    dfopt = dfopt.assign(optPrice = dfopt.optId.map(optPrices))
 
-    df1 = pd.concat([pd.read_pickle(fspath+f) 
-                     for f in optsList], axis=0, sort=True).reset_index(drop=True)[cols]
+    # get the margins
+    orders = [Order(action='SELL', orderType='MKT', totalQuantity=lot, whatIf=True) for lot in dfopt.lot]
 
-    # filter for high probability and margin
-    df2 = df1[((df1.strike > df1.hi52) | 
-               (df1.strike < df1.lo52))].sort_values('rom', ascending=False)
-    df2 = df2[df2.optMargin < 1e+308]  # Remove very large number in margin (1.7976931348623157e+308)
+    mdict = {c.conId: ib.whatIfOrder(c, o).initMarginChange for c, o in zip(contracts, orders)} # making dictionary takes time!
 
-    df2 = df2.assign(remqty=df2.symbol.map(dfrq.remqty.to_dict()))   # remaining quantities
-    df2 = df2[df2.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty = 0)
+    # Remove very large number in margin (1.7976931348623157e+308)
+    mdict = {key: value for key, value in mdict.items() if float(value) < 1e7}
 
-    df2 = df2.groupby('symbol').head(nLargest) # get the top 5
+    # assign the margins
+    dfopt = dfopt.assign(margin=dfopt.optId.map(mdict).astype('float'))
 
-    # generate expPrice
-    return gen_expPrice(ib, df2)
+    # calculate rom
+    dfopt = dfopt.assign(rom=dfopt.optPrice/dfopt.margin*365/dfopt.dte*dfopt.lot)
+
+    # regenerate expected price
+    df = gen_expPrice(ib, dfopt)
+    
+    return df
 
 #_____________________________________
 
-# snp_tgt_update.py
-
-def snp_tgt_update(ib):
-    '''Dynamically update target dataframe (2 mins for 400 rows) for:
-        - remaining quantity
-        - price
+# watchlists.py
+def watchlists(ib):
+    '''Generate watchlist
+       First with existing positions
+       Then with sowing symbols
     Arg: (ib) as connection object
-    Returns:
-       targetopts DataFrame with updated price and rom 
-       And writes price and remq to _targetopts.pickle
-    '''
+    Returns: None. Generates watch.csv and targets.csv'''
 
-    dft = pd.read_pickle(fspath+'_targetopts.pickle')
+    # get the portfolio
+    p = ib.portfolio()
 
-    # update remaining quantities
-    dfr = remqty_snp(ib)
-    dfr_dict = dfr.remqty.to_dict()
-    df2 = dft.assign(remqty=dft.symbol.map(dfr_dict)).reset_index()
+    # get the targets
+    df = pd.read_pickle(fspath+'targets.pickle')
 
-    # update price and rom
-    df2 = upd_opt(ib, df2)
+    # make the symbol list
+    sy = list(util.df(list(util.df(p)['contract'])).symbol.unique()) + \
+         list(df.symbol.unique())
+
+    # make and pickle the watchlist
+    watch = [('DES', s, 'STK', 'SMART') for s in sy]
+
+    # write to watch.csv
+    util.df(watch).to_csv(fspath+'watch.csv', header=None, index=None)
     
-    # generate expPrice
-    return gen_expPrice(ib, dft)
+    # write targets to csv
+    df.to_csv(fspath+'targets.csv', index=None, header=True)
 
 #_____________________________________
 
-# snp_process.py
+# dynamic.py
+def dynamic(ib):
+    '''For dynamic (live) trading
+    Arg: (ib) as connection object
+    Returns: None. Does the following:
+      1) Cancels openorders of filled symbols to reduce risk
+      2) Finds positions not having closing (harvest) orders. Places them.
+      3) Recalculates remaining quantities with a 10% higher price
+      4) Sows them
+      5) Re-pickles the target'''
+    
+    # ...get filled dataframe
+    df_fill = util.df(list(util.df(ib.fills())['contract']))
+    df_fill = df_fill[list(df_fill)[:6]]
+    df_fill = df_fill.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-# Weekend update functions
-# __________________________
+    # ...get openorder dataframe
+    df_open = util.df(ib.openTrades())
 
-def snp_weekend_process(ib):
-    '''Weekend process to generate underlyings (lot+margin) and option pickles
-    Arg: (ib) as connection
-    Returns: 
-        None
-        But pickles to _lot_margin.pickle & (SYMBOL).pkl'''
-    
-    util.logToFile(logpath+'_weekend.log')  # create log file
-    with open(logpath+'_weekend.log', 'w'): # clear the previous log
-        pass
-    
-    # Step # 1: generate the underlyings
-    dfu = p_snps(ib).dropna()
+    # open contracts
+    df_oc = util.df(list(df_open['contract']))
+    df_oc = df_oc[list(df_oc)[:6]]
+    df_oc = df_oc.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-    # Step # 2: generate the option pickles
-    [p_snpopts(ib=ib,undContract=u, undPrice=p) 
-     for u, p in zip(dfu.contract, dfu.undPrice)]
-    
-    return None
-    
-def snp_pickle_remaining_opts(ib, keep_pickles = True):
-    '''Upon any failure, pickle remaining options upon failure
-    Arg: 
-        (ib) as connection
-        <keep_pickles> as True / False for keeping existing pickles
-    Returns:
-       None'''
-    
-    util.logToFile(logpath+'_weekend.log')  # create log file
-    
-    # get the underlying dataframe
-    dfu = pd.read_pickle(fspath+'_lot_margin.pickle')
-    
-    if keep_pickles:
-        fs = listdir(fspath)
-        optsList = [f[:-4] for f in fs if f[-3:] == 'pkl']
-        dfr = dfu[~dfu.index.isin(optsList)] # remaining dfs (without existing pickles)
-        [p_snpopts(ib=ib,undContract=u, undPrice=p)
-         for u, p in zip(dfr.contract, dfr.undPrice)]
-    else:
-        [p_snpopts(ib=ib,undContract=u, undPrice=p)
-         for u, p in zip(dfu.contract, dfu.undPrice)]
+    # orders
+    df_ord = util.df(list(df_open['order']))
+    df_ord = df_ord[list(df_ord)[1:8]]
+
+    df_openord = df_oc.join(df_ord).drop('clientId', axis=1)
+
+    # ... cancel SELL openorders for those symbols that have been filled
+    # get the symbols of orders filled
+    fill_symbols = list(df_fill.symbol.unique())
+
+    # get the openorders that have fill symbols (to cancel and harvest)
+    ord_mask = df_openord.symbol.isin(fill_symbols) & (df_openord.action == 'SELL')
+    df_hvst = df_openord[ord_mask] # harvest orders
+
+    # cancel the openorders
+    cancel_list = [o for o in ib.openOrders() if o.orderId in list(df_hvst.orderId)]
+    cancelled = [ib.cancelOrder(c) for c in cancel_list]
+
+    # ... find postions not having closing / harvesting (BUY) orders
+
+    # get the positions
+    df_p = util.df(ib.positions())
+
+    # get the position contracts
+    df_pc = util.df(list(df_p.contract))
+    df_pc = df_pc[list(df_pc)[:6]]
+    df_pc = df_pc.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+
+    df_pc = df_pc.join(df_p[['position', 'avgCost']])
+
+    # get the existing BUY orders
+    df_bx = df_openord[df_openord.action == 'BUY']
+
+    # determine what to harvest
+    df_buy = df_pc[~df_pc.conId.isin(list(df_bx.conId))]
+
+    df_buy = df_buy.assign(dte=[get_dte(d) for d in df_buy.expiration])
+
+    # get the latest prices
+    contracts = ib.qualifyContracts(*[Contract(conId=c) for c in df_buy.conId])
+
+    tickers = ib.reqTickers(*contracts)
+    optPrices = {t.contract.conId: t.marketPrice() for t in tickers} # {conId: optPrice}
+
+    df_buy = df_buy.assign(optPrice = df_buy.conId.map(optPrices))
+
+    # get the harvest price
+    df_buy = df_buy.assign(hvstPrice=[get_prec(min(hvstPricePct(d)*c,mp*0.9),0.05) for d, c, mp in zip(df_buy.dte, df_buy.avgCost, df_buy.optPrice)])
+
+    buy_orders = [LimitOrder(action='BUY', totalQuantity=-position, lmtPrice=hvstPrice) 
+                              for position, hvstPrice in zip(df_buy.position, df_buy.hvstPrice)]
+
+    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    # WARNING: THE FOLLOWING CODE PLACES 'HARVEST' ORDERS
+    # ___________________________________________________
+    hco = zip(contracts, buy_orders)
+    hvstTrades = [ib.placeOrder(c, o) for c, o in hco]
+    # @@@@@@@@    END OF ORDER PLACEMENT   @@@@@@@@@@@@@@
+
+    # get the remaining quantities
+    dfrq = remqty_snp(ib)
+
+    # update target with remaining quantities
+    dft = pd.read_pickle(fspath+'targets.pickle')
+
+    dft = dft.assign(remqty=dft.symbol.map(dfrq.remqty.to_dict()))   # remaining quantities
+    dft = dft[dft.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty <= 0)
+
+    # ...recalculate the price and margins for position symbols in dft
+    df_rcalc = dft[dft.symbol.isin(fill_symbols)]
+
+    # if rcalc is not empty recalculate, sow and write-back to targets pickle
+    if not df_rcalc.empty:
+
+        df_rcalc = upd(ib, df_rcalc)
+        df_rcalc = df_rcalc.assign(expPrice=get_prec(df_rcalc.expPrice*1.1,0.05))
+
+        # place new sow trades from df_rcalc
+        sell_orders = [LimitOrder(action='SELL', totalQuantity=q*l, lmtPrice=expPrice) for q, l, expPrice in zip(df_rcalc.qty, df_rcalc.lot, df_rcalc.expPrice)]
+        # get the contracts
+        cs=[Contract(conId=c) for c in df_rcalc.optId]
+
+        blks = [cs[i: i+blk] for i in range(0, len(cs), blk)]
+        cblks = [ib.qualifyContracts(*s) for s in blks]
+        qc = [z for x in cblks for z in x]
+
+        co = list(zip(qc, sell_orders))
+        coblks = [co[i: i+blk] for i in range(0, len(co), blk)]
+
+        # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        # WARNING: THE FOLLOWING CODE PLACES 'SOW' ORDERS
+        # _______________________________________________
+        trades = []
+        for coblk in coblks:
+            for co in coblk:
+                trades.append(ib.placeOrder(co[0], co[1]))
+            ib.sleep(1)
+        # @@@@@@@@    END OF ORDER PLACEMENT   @@@@@@@@@@@@@@
+
+        # remove old df_rcalc from dft
+        dft = dft[~dft.optId.isin(list(df_rcalc.optId))]
+
+        # append new df_rcalc to dft
+        dft.append(df_rcalc).reset_index(drop=True)
+
+        # write back to targets pickle
+        dft.to_pickle(fspath+'targets.pickle')
         
-    return None
-
-# Everyday update function
-# ________________________
-
-def snp_everyday_process(ib):
-    '''everyday process to update update underlyings, option prices and generate targets
-    (takes about 40 mins)
-    Arg: (ib) as connection
-    Returns:
-       None
-       But pickles lot and margin updates to underlyings
-    '''
-    util.logToFile(logpath+'_everyday.log')  # create log file
-    
-    # ...update underlyings
-    dfu = pd.read_pickle(fspath+'_lot_margin.pickle').dropna()
-    upd_snps(ib, dfu)
-    
-    # ...update option prices
-    fs = listdir(fspath)
-    
-    # collect the options
-    optsList = [f for f in fs if f[-3:] == 'pkl']
-    dfopts = pd.concat([pd.read_pickle(fspath+f)
-                     for f in optsList], axis=0, sort=True).reset_index(drop=True)
-
-    # update the option prices
-    df = upd_opt(ib, dfopts)
-    
-    # ...generate targets and pickle, with new remaining quantities
-    dft = target_snp(ib)
-    
-    return None
-
-# Dynamic update function
-# _______________________
-
-def snp_dynamic_update(ib):
-    '''dynamically update the target with price and remaining quantities
-    Arg: (ib) as connection object
-    Returns: dft as DataFrame and re-pickles it
-       '''
-    util.logToFile(logpath+'_dynamic.log')  # create log file
-    
-    return snp_tgt_update(ib)
+        return None
 
 #_____________________________________
 

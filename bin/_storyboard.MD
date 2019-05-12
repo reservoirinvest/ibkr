@@ -27,8 +27,6 @@ Cancel **ALL Orders** ---> Place the **Closing Orders** ---> Place the **Opening
 
 ## Common functions
 * <b>helper.ipynb</b>    --- for generic helper functions
-* <b>xcute.ipynb</b>     --- for executing orders
-
 * <b>_jup2py.ipynb</b>   --- for auto-converting jupyter to py modules
 
 ## Market specific functions
@@ -120,6 +118,8 @@ Assigns variables from JSON
 
 ### watchlists.py         *generate watch-list and target-list in csv*
 (ib)  ---> watch.csv targets.csv
+
+### dynamic.py            *places trades with reduced risk*
 
 ***********************************************************************************
 

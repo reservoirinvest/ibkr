@@ -1,10 +1,67 @@
 # snp_main.py
 # Main program for snp
 
-from ib_insync import *
-
 from helper import *
 from snp_func import *
+
+# Do assignments
+a = assign_var('snp')
+for v in a:
+    exec(v)
+
+from ib_insync import *
+
+# Get user input
+askmsg = "1) Build Targets\n" + "2) Dynamically Manage \n" + "   Please choose 1 or 2: "
+while True:
+    try:
+        ip = int(input(askmsg))
+    except ValueError:
+        print("Sorry, I didn't understand that")
+        continue # loop again
+    if not ip in [1, 2]:
+        print("Please choose the right number")
+        continue # loop again
+    else:
+        break # success and exit loop
+
+# do the appropriate function
+if ip is 1:    # build the base
+    
+    with get_connected('snp', 'live') as ib:
+        
+        with open(logpath+'build.log', 'w'):
+            pass # clear the run log
+        
+        util.logToFile(logpath+'build.log')
+        
+        util.logging.info('####              SNP OPTIONS BUILD STARTED                     ####')
+        opts(ib)
+        util.logging.info('_________________SNP OPTIONS BUILD COMPLETE_________________________')
+
+        # make the targets
+        targets(ib)
+        util.logging.info('________________SNP TARGETS BUILD COMPLETED_________________________')
+        
+        # make the watchlists
+        watchlists(ib)
+        
+else:         # place dynamic trades
+
+    with get_connected('snp', 'live') as ib:
+
+        util.logToFile(logpath+'dynamic.log')
+
+        util.logging.info('####               START of Dynamic Manage                   ####')
+
+        # run the dynamic update
+        dynamic(ib)
+
+        util.logging.info('___________________END of Dynamic Manage_________________________')
+        
+# code put inside this will not be executed if snp_main is imported!
+if __name__ == "__main__":
+    pass
 
 #_____________________________________
 
