@@ -12,7 +12,7 @@ for v in a:
 from ib_insync import *
 
 # Get user input
-askmsg = "1) Build Targets\n" + "2) Dynamically Manage \n" + "   Please choose 1 or 2: "
+askmsg = "1) Build Targets (45 mins)\n" + "2) Dynamically Manage (2 mins)\n" + "   Please choose 1 or 2: "
 while True:
     try:
         ip = int(input(askmsg))

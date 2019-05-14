@@ -249,6 +249,7 @@ def remqty_nse(ib):
     '''generates the remaining quantities dictionary
     Args:
         (ib) as connection object
+        <df_opt> as dataframe of options. If not provided defaults to opts.pickle
     Returns:
         dfrq as a datframe with symbol and remaining quantities
         '''
@@ -310,7 +311,7 @@ def targets(ib):
     
     df3.to_pickle(fspath+'targets.pickle') # pickle the targets
     
-    watchlist(ib) # creates the watchlist
+    watchlists(ib) # creates the watchlist
     
     return df3
 
@@ -433,38 +434,27 @@ def dynamic(ib):
       4) Sows them
       5) Re-pickles the target'''
     
-    # ...get filled dataframe
-    df_fill = util.df(list(util.df(ib.fills())['contract']))
-    df_fill = df_fill[list(df_fill)[:6]]
-    df_fill = df_fill.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+    #... get the open orders
+    open_trades = ib.openTrades()
 
-    # ...get openorder dataframe
-    df_open = util.df(ib.openTrades())
+    if open_trades:
+        df_open=util.df(open_trades)
 
-    # open contracts
-    df_oc = util.df(list(df_open['contract']))
-    df_oc = df_oc[list(df_oc)[:6]]
-    df_oc = df_oc.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+        # open contracts
+        df_oc = util.df(list(df_open['contract']))
+        df_oc = df_oc[list(df_oc)[:6]]
+        df_oc = df_oc.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-    # orders
-    df_ord = util.df(list(df_open['order']))
-    df_ord = df_ord[list(df_ord)[1:8]]
+        # orders
+        df_ord = util.df(list(df_open['order']))
+        df_ord = df_ord[list(df_ord)[1:8]]
 
-    df_openord = df_oc.join(df_ord).drop('clientId', axis=1)
+        df_openord = df_oc.join(df_ord).drop('clientId', axis=1)
 
-    # ... cancel SELL openorders for those symbols that have been filled
-    # get the symbols of orders filled
-    fill_symbols = list(df_fill.symbol.unique())
+    else:
+        df_openord = pd.DataFrame() # Empty DataFrame
 
-    # get the openorders that have fill symbols (to cancel and harvest)
-    ord_mask = df_openord.symbol.isin(fill_symbols) & (df_openord.action == 'SELL')
-    df_hvst = df_openord[ord_mask] # harvest orders
-
-    # cancel the openorders
-    cancel_list = [o for o in ib.openOrders() if o.orderId in list(df_hvst.orderId)]
-    cancelled = [ib.cancelOrder(c) for c in cancel_list]
-
-    # ... find postions not having closing / harvesting (BUY) orders
+    #... place closing orders for those without them
 
     # get the positions
     df_p = util.df(ib.positions())
@@ -477,10 +467,16 @@ def dynamic(ib):
     df_pc = df_pc.join(df_p[['position', 'avgCost']])
 
     # get the existing BUY orders
-    df_bx = df_openord[df_openord.action == 'BUY']
+    if not df_openord.empty:
+        df_bx = df_openord[df_openord.action == 'BUY']
+    else:
+        df_bx = pd.DataFrame() # Empty dataframe
 
     # determine what to harvest
-    df_buy = df_pc[~df_pc.conId.isin(list(df_bx.conId))]
+    if not df_bx.empty:
+        df_buy = df_pc[~df_pc.conId.isin(list(df_bx.conId))]
+    else:
+        df_buy = df_pc
 
     df_buy = df_buy.assign(dte=[get_dte(d) for d in df_buy.expiration])
 
@@ -498,61 +494,127 @@ def dynamic(ib):
     buy_orders = [LimitOrder(action='BUY', totalQuantity=-position, lmtPrice=hvstPrice) 
                               for position, hvstPrice in zip(df_buy.position, df_buy.hvstPrice)]
 
-    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    # WARNING: THE FOLLOWING CODE PLACES 'HARVEST' ORDERS
-    # ___________________________________________________
     hco = zip(contracts, buy_orders)
+
+    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    # WARNING: THE FOLLOWING CODE PLACES 'HARVEST' BUY ORDERS
+    # _______________________________________________________
     hvstTrades = [ib.placeOrder(c, o) for c, o in hco]
     # @@@@@@@@    END OF ORDER PLACEMENT   @@@@@@@@@@@@@@
 
-    # get the remaining quantities
+    #.... check for overall position risk. Abort after cancelling SELL orders at risk
+    df_ac = util.df(ib.accountSummary())
+    net_liq = float(df_ac[df_ac.tag == 'NetLiquidation'][:1].value)
+    init_margin = float(df_ac[df_ac.tag == 'InitMarginReq'][:1].value)
+
+    if init_margin >= net_liq*ovallmarginlmt:  # if overall limit is breached
+        print("Overall margin limit breached")
+
+        # ...cancel all SELL open orders, if it is not empty
+        if not df_openord.empty:
+            m_opord = (df_openord.action == 'SELL')
+            df_sells = df_openord[m_openord]
+
+            # cancel the SELL openorders
+            cancel_list = [o for o in ib.openOrders() if o.orderId in list(df_sells.orderId)]
+            cancelled = [ib.cancelOrder(c) for c in cancel_list]
+
+            return None # remove the return function in dynamic live
+
+    #... place SOW orders
+    # get remaining quantities
     dfrq = remqty_nse(ib)
 
     # update target with remaining quantities
     dft = pd.read_pickle(fspath+'targets.pickle')
 
+    # prepare the target
     dft = dft.assign(remqty=dft.symbol.map(dfrq.remqty.to_dict()))   # remaining quantities
     dft = dft[dft.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty <= 0)
 
-    # ...recalculate the price and margins for position symbols in dft
-    df_rcalc = dft[dft.symbol.isin(fill_symbols)]
+    # for first run, check if SOW orders are empty
+    if not df_openord.empty:   # open orders are present due to BUY orders
+        if df_openord[df_openord.action == 'SELL'].empty: # but there are no SELL orders
+            print('SOW orders empty. First trades will be done.')
+            dft = upd(ib, dft)
+            dft.to_pickle(fspath+'targets.pickle')
+            first_sell_blks = trade_blocks(ib, dft, exchange=exchange)
 
-    # if rcalc is not empty recalculate, sow and write-back to targets pickle
-    if not df_rcalc.empty:
+            # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+            # WARNING: THE FOLLOWING CODE PLACES FIRST 'SOW' SELL ORDERS
+            # __________________________________________________________
+            first_sell_trades = doTrades(ib, first_sell_blks)
+            # @@@@@@@@    END OF ORDER PLACEMENT   @@@@@@@@@@@@@@@@@@
 
-        df_rcalc = upd(ib, df_rcalc)
-        df_rcalc = df_rcalc.assign(expPrice=get_prec(df_rcalc.expPrice*1.1,0.05))
+            util.df(first_sell_trades).to_pickle(fspath+'first_sell_trades.pickle')
 
-        # place new sow trades from df_rcalc
-        sell_orders = [LimitOrder(action='SELL', totalQuantity=q*l, lmtPrice=expPrice) for q, l, expPrice in zip(df_rcalc.qty, df_rcalc.lot, df_rcalc.expPrice)]
-        # get the contracts
-        cs=[Contract(conId=c) for c in df_rcalc.optId]
+    # .. get filled symbols
+    fill_symbols = []
+    if ib.fills():     # get fill symbols, if there are any SELL fills!
+        df_fc = util.df(list(util.df(ib.fills())['contract'])) # filled contracts
+        df_fc = df_fc[list(df_fc)[:6]]
+        df_fc = df_fc.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+        df_fc
 
-        blks = [cs[i: i+blk] for i in range(0, len(cs), blk)]
-        cblks = [ib.qualifyContracts(*s) for s in blks]
-        qc = [z for x in cblks for z in x]
+        df_fe = util.df(list(util.df(ib.fills())['execution'])) # executed contracts
+        df_fe = df_fe[list(df_fe)[4:13]].drop('liquidation', 1)
 
-        co = list(zip(qc, sell_orders))
-        coblks = [co[i: i+blk] for i in range(0, len(co), blk)]
+        df_fill = df_fc.join(df_fe)
 
-        # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-        # WARNING: THE FOLLOWING CODE PLACES 'SOW' ORDERS
-        # _______________________________________________
-        trades = []
-        for coblk in coblks:
-            for co in coblk:
-                trades.append(ib.placeOrder(co[0], co[1]))
-            ib.sleep(1)
-        # @@@@@@@@    END OF ORDER PLACEMENT   @@@@@@@@@@@@@@
+        # get the fill symbols
+        fill_symbols = list(df_fill.symbol.unique())
 
-        # remove old df_rcalc from dft
-        dft = dft[~dft.optId.isin(list(df_rcalc.optId))]
+        # identify the recalc orders which needs to be cancelled and reordered
+        df_rcalc = dft[dft.symbol.isin(fill_symbols)]
 
-        # append new df_rcalc to dft
-        dft.append(df_rcalc).reset_index(drop=True)
+        if not df_rcalc.empty: # re-calculation has trades (genuine or from last day)
+            if df_openord.empty: #...but openorder is empty. This is because of last day's trades still available.
+                print('NOTE: Dynamic calculation is to be run only an hour before markets open.\n')
+                print('Entire target SELL trade will be placed')
+                sell_blks_wo_openord = trade_blocks(ib, dft, exchange=exchange)
 
-        # write back to targets pickle
-        dft.to_pickle(fspath+'targets.pickle')
+                # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                # WARNING: THE FOLLOWING CODE PLACES FIRST 'SOW' SELL ORDERS
+                # __________________________________________________________
+                sell_trades_wo_openord = doTrades(ib, sell_blks_wo_openord)
+                # @@@@@@@@    END OF ORDER PLACEMENT   @@@@@@@@@@@@@@@@@@@@@
+                return None # get out of the loop!
+
+            # else it is a genuine recalc... which needs to be cancelled
+            sell_ordId = df_openord[df_openord.action == 'SELL'].set_index('conId')[['orderId']].to_dict()['orderId']
+            df_cancel_rc = df_rcalc.assign(ordId=df_rcalc.optId.astype('int32').map(sell_ordId)).dropna()
+            cancelords = [o for o in ib.openOrders() if o.orderId in list(df_cancel_rc.ordId.astype(int))]
+            rc_cancelled = [ib.cancelOrder(c) for c in cancelords]
+
+            # recalc remaining quantities are 're-quantified'
+            df_remq = remqty_nse(ib)
+            df_rcalc = df_rcalc.assign(remqty=df_rcalc.symbol.map(df_remq.remqty.to_dict()))   # remaining quantities
+            df_rcalc = df_rcalc[df_rcalc.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty <= 0)
+
+            # expected price is jacked up to cover for the risk
+            df_rcalc = upd(ib, df_rcalc)
+            df_rcalc = df_rcalc.assign(expPrice=get_prec(df_rcalc.expPrice*1.25,0.05))
+            # expRom is also recalculated
+            df_rcalc = df_rcalc.assign(expRom=df_rcalc.expPrice*df_rcalc.lot/df_rcalc.margin*365/df_rcalc.dte)
+
+            # SOW trades are placed
+            rcalc_blks = trade_blocks(ib, df_rcalc, exchange=exchange)
+
+            # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+            # WARNING: THE FOLLOWING CODE PLACES 'SOW' SELL ORDERS
+            # _______________________________________________________
+            rcalc_trades = doTrades(ib, rcalc_blks)
+            # @@@@@@@@    END OF ORDER PLACEMENT   @@@@@@@@@@@@@@@@@@
+
+
+            # remove the recalc optIds from dft
+            dft=dft[~dft.optId.isin(list(df_rcalc.optId))]
+
+            # re-add df_rcalc to dft and pickle
+            dft = grp_opts(pd.concat([dft, df_rcalc[dft.columns]]))
+
+            # write to pickle
+            dft.to_pickle((fspath+'targets.pickle'))
         
         return None
 

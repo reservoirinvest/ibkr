@@ -278,3 +278,47 @@ def hvstPricePct(dte):
 
 #_____________________________________
 
+# trade_blocks.py
+def trade_blocks(ib, df, exchange):
+    '''Makes SELL contract blocks for trades
+    Args:
+       (ib) as connection object
+       (df) as the target df for setting up the trades
+       (exchange) as the market <'NSE'|'SMART'>
+    Returns:
+       (coblks) as contract blocks'''
+    
+    if exchange == 'NSE':
+        sell_orders = [LimitOrder(action='SELL', totalQuantity=q*l, lmtPrice=expPrice) for q, l, expPrice in zip(df.qty, df.lot, df.expPrice)]
+    elif exchange == 'SMART':
+        sell_orders = [LimitOrder(action='SELL', totalQuantity=q, lmtPrice=expPrice) for q, expPrice in zip(df.qty, df.expPrice)]
+    # get the contracts
+    cs=[Contract(conId=c) for c in df.optId]
+
+    blks = [cs[i: i+blk] for i in range(0, len(cs), blk)]
+    cblks = [ib.qualifyContracts(*s) for s in blks]
+    qc = [z for x in cblks for z in x]
+
+    co = list(zip(qc, sell_orders))
+    coblks = [co[i: i+blk] for i in range(0, len(co), blk)]
+    
+    return coblks
+
+#_____________________________________
+
+# doTrades.py
+def doTrades(ib, coblks):
+    '''Places trades in blocks
+    Arg: 
+        (ib) as connection object
+        (coblks) as (contract, order) blocks'''
+    trades = []
+    for coblk in coblks:
+        for co in coblk:
+            trades.append(ib.placeOrder(co[0], co[1]))
+        ib.sleep(1)
+        
+    return trades
+
+#_____________________________________
+

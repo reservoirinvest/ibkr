@@ -169,4 +169,10 @@ These need to be included on top of modules with the following code:
 ### hvstPricePct   *getting harvest price percentage, based on curve*
 (dte)  ---> returns the price percentage to harvest
 
+### trade_blocks   * makes blocks for placing trades*
+(ib, df)    ---> returns blocks for placing trades
+
+### doTrades         *place the trades*
+(ib, coblks)  ---> returns list of trades done
+
 ************************************************************************************

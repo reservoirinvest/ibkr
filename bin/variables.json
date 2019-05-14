@@ -9,12 +9,13 @@
 		"logpath": "../data/log/nse_",
         "maxdte": 60,
         "minOptPrice": 0.15,
-        "minRom": 0.75,
+        "minRom": 1,
         "mindte": 3,
         "minexpRom": 0.55,
         "nLargest": 3,
         "nse_assignment_limit": 1500000,
-        "tradingdays": 252
+        "tradingdays": 252,
+		"ovallmarginlmt": 0.8
     },
     "snp": {
         "blk": 50,
@@ -24,13 +25,14 @@
         "exchange": "SMART",
         "fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
-        "maxdte": 60,
+        "maxdte": 45,
         "minOptPrice": 0.07,
-        "minRom": 0.75,
-        "mindte": 3,
-        "minexpRom": 0.45,
+        "minRom": 0.95,
+        "mindte": 8,
+        "minexpRom": 0.85,
         "nLargest": 3,
         "snp_assignment_limit": 50000,
-        "tradingdays": 252
+        "tradingdays": 252,
+		"ovallmarginlmt": 0.8		
     }
 }
