@@ -27,7 +27,7 @@ def opts(ib):
      Returns: None. But pickles to opts.pickle'''
     
     # exclusion list (excludes symbols with existing positions!)
-    excl = ['VXX','P', 'TSRO', 'GOOGL', 'BKNG'] + list({p.contract.symbol for p in ib.positions()})
+    excl = ['VXX','P', 'TSRO', 'GOOGL']
 
     # Download cboe weeklies to a dataframe
     dls = "http://www.cboe.com/publish/weelkysmf/weeklysmf.xls"
@@ -180,7 +180,7 @@ def opts(ib):
     df_opt = df_opt[df_opt.optMargin < 1e7] # remove options with very large margins
 
     # get the rom
-    df_opt = df_opt.assign(rom=df_opt.optPrice/df_opt.optMargin*365/df_opt.dte).sort_values('rom', ascending=False)
+    df_opt = df_opt.assign(rom=df_opt.optPrice*df_opt.lot/df_opt.optMargin*365/df_opt.dte).sort_values('rom', ascending=False)
 
     df_opt.to_pickle(fspath+'opts.pickle')
     
@@ -328,7 +328,7 @@ def upd(ib, dfopt):
     dfopt = dfopt.assign(margin=dfopt.optId.map(mdict).astype('float'))
 
     # calculate rom
-    dfopt = dfopt.assign(rom=dfopt.optPrice/dfopt.margin*365/dfopt.dte*dfopt.lot)
+    dfopt = dfopt.assign(rom=dfopt.optPrice*dfopt.lot/dfopt.margin*365/dfopt.dte)
 
     # regenerate expected price
     df = gen_expPrice(ib, dfopt)

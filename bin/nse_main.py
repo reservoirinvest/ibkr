@@ -35,9 +35,9 @@ if ip is 1:    # build the base
         
         util.logToFile(logpath+'build.log')
         
-        util.logging.info('####                 SNP BASE BUILD STARTED                  ####')
+        util.logging.info('####                 NSE BASE BUILD STARTED                  ####')
         base(ib)
-        util.logging.info('____________________SNP BASE BUILD COMPLETE______________________')
+        util.logging.info('____________________NSE BASE BUILD COMPLETE______________________')
 
         # get the rom and optPrice
         opts(ib)

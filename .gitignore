@@ -4,6 +4,4 @@ venv
 __pycache__
 .idea
 *~
-*.pkl
-*.csv
-zdata
+z*.*
