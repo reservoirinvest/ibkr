@@ -322,3 +322,31 @@ def doTrades(ib, coblks):
 
 #_____________________________________
 
+# riskyprice.py
+def riskyprice(dft, prec):
+    '''adjusts expPrice to accomodate risk
+    Args:
+        (dft) as the options dataframe
+        (prec) precision needed as int'''
+    pmask = (dft.right == 'P') & (dft.undPrice-dft.strike-dft.expPrice < dft.Fall)
+    df_prisky = pd.merge(dft[pmask][['symbol', 'optId', 'strike', 'right', 'dte', 'undPrice', 'optPrice', 'expPrice', 'Fall', 'Rise', 'expRom', 'qty']], 
+             pd.DataFrame((dft[pmask].undPrice-dft[pmask].strike-dft[pmask].expPrice)), on=dft[pmask].index).drop('key_0', 1)
+
+    cmask = (dft.right == 'C') & (dft.strike-dft.undPrice-dft.expPrice < dft.Rise)
+    df_crisky = pd.merge(dft[cmask][['symbol', 'optId', 'strike', 'right', 'dte', 'undPrice', 'optPrice', 'expPrice', 'Fall', 'Rise', 'expRom', 'qty']], 
+             pd.DataFrame((dft[cmask].strike-dft[cmask].undPrice-dft[cmask].expPrice)), on=dft[cmask].index).drop('key_0', 1)
+
+    df_risky = pd.concat([df_prisky, df_crisky]).reset_index(drop=True)
+
+    df_risky = df_risky.rename(columns={0: 'FallRise'})
+
+    df_risky = df_risky.assign(FRpct=abs(np.where(df_risky.right == 'P', (df_risky.FallRise - df_risky.Fall)/df_risky.FallRise, (df_risky.FallRise - df_risky.Rise)/df_risky.FallRise)))
+
+    df_risky = df_risky.sort_values('FRpct', ascending=False)
+
+    df_risky = df_risky.assign(expPrice = get_prec(df_risky.FRpct*df_risky.expPrice, prec))
+
+    return df_risky.set_index('optId')['expPrice'].to_dict()
+
+#_____________________________________
+
