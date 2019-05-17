@@ -324,10 +324,12 @@ def doTrades(ib, coblks):
 
 # riskyprice.py
 def riskyprice(dft, prec):
-    '''adjusts expPrice to accomodate risk
+    '''adjusts expPrice to accomodate fall-rise risk
     Args:
         (dft) as the options dataframe
-        (prec) precision needed as int'''
+        (prec) precision needed as int
+    Returns:
+        (riskyprice) as dictionary'''
     pmask = (dft.right == 'P') & (dft.undPrice-dft.strike-dft.expPrice < dft.Fall)
     df_prisky = pd.merge(dft[pmask][['symbol', 'optId', 'strike', 'right', 'dte', 'undPrice', 'optPrice', 'expPrice', 'Fall', 'Rise', 'expRom', 'qty']], 
              pd.DataFrame((dft[pmask].undPrice-dft[pmask].strike-dft[pmask].expPrice)), on=dft[pmask].index).drop('key_0', 1)

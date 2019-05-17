@@ -271,8 +271,8 @@ def gen_expPrice(ib, df):
     Returns:
         updated df with new recalculated expPrice and expRom
     '''
-    df = df.assign(expPrice=np.where(df.rom < minRom, 
-                                       get_prec((df.optPrice*minRom/df.rom), 0.05), 
+    df = df.assign(expPrice=np.where(df.rom < minexpRom, 
+                                       get_prec((df.optPrice*minexpRom/df.rom), 0.01), 
                                        df.optPrice+0.05))
 
     df.loc[df.expPrice < minOptPrice, 'expPrice'] = minOptPrice # set to minimum optPrice
@@ -325,13 +325,13 @@ def upd(ib, dfopt):
     # get the margins
     orders = [Order(action='SELL', orderType='MKT', totalQuantity=1, whatIf=True) for lot in dfopt.lot]
 
-    mdict = {c.conId: ib.whatIfOrder(c, o).initMarginChange for c, o in zip(contracts, orders)} # making dictionary takes time!
+    mdict = {c.conId: catch(lambda: float(ib.whatIfOrder(c, o).initMarginChange)) for c, o in zip(contracts, orders)} # making dictionary takes time!
 
     # Remove very large number in margin (1.7976931348623157e+308)
     mdict = {key: value for key, value in mdict.items() if float(value) < 1e7}
 
     # assign the margins
-    dfopt = dfopt.assign(optMargin=dfopt.optId.map(mdict).astype('float'))
+    dfopt = dfopt.assign(optMargin=dfopt.optId.map(mdict))
 
     # calculate rom
     dfopt = dfopt.assign(rom=dfopt.optPrice*dfopt.lot/dfopt.optMargin*365/dfopt.dte)
@@ -374,7 +374,7 @@ def watchlists(ib):
 
 # dynamic.py
 def dynamic(ib):
-    '''For dynamic (live) trading
+    '''For dynamic (live) trading (~3 mins)
     Arg: (ib) as connection object
     Returns: None. Does the following:
       1) Cancels openorders of filled symbols to reduce risk
@@ -382,29 +382,28 @@ def dynamic(ib):
       3) Recalculates remaining quantities with a 10% higher price
       4) Sows them
       5) Re-pickles the target'''
-    
-    # nse dynamic changes
 
-    #... get the open orders
+#... get the open orders
 
-    open_trades = ib.openTrades()
+open_trades = ib.openTrades()
 
-    if open_trades:
-        df_open=util.df(open_trades)
+if open_trades:
+    df_open=util.df(open_trades)
 
-        # open contracts
-        df_oc = util.df(list(df_open['contract']))
-        df_oc = df_oc[list(df_oc)[:6]]
-        df_oc = df_oc.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+    # open contracts
+    df_oc = util.df(list(df_open['contract']))
+    df_oc = df_oc[list(df_oc)[:6]]
+    df_oc = df_oc.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-        # orders
-        df_ord = util.df(list(df_open['order']))
-        df_ord = df_ord[list(df_ord)[1:8]]
+    # orders
+    df_ord = pd.DataFrame([(row.orderId, row.permId, row.action, row.totalQuantity, row.lmtPrice) 
+              for idx, row in df_open.order.items()],
+            columns = ['orderId', 'permId', 'action', 'totalQuantity', 'lmtPrice'])
 
-        df_openord = df_oc.join(df_ord).drop('clientId', axis=1)
+    df_openord = df_oc.join(df_ord)
 
-    else:
-        df_openord = pd.DataFrame() # Empty DataFrame
+else:
+    df_openord = pd.DataFrame() # Empty DataFrame
 
     #.... check for overall position risk. Abort after cancelling SELL orders at risk
     df_ac = util.df(ib.accountSummary())
@@ -417,13 +416,13 @@ def dynamic(ib):
         # ...cancel all SELL open orders, if it is not empty
         if not df_openord.empty:
             m_opord = (df_openord.action == 'SELL')
-            df_sells = df_openord[m_openord]
+            df_sells = df_openord[m_opord]
 
             # cancel the SELL openorders
             cancel_list = [o for o in ib.openOrders() if o.orderId in list(df_sells.orderId)]
             cancelled = [ib.cancelOrder(c) for c in cancel_list]
 
-            return None # abort the dynamic function. ***PLEASE UNCOMMENT THIS IN LIVE FUNCTION****
+    #         return None # abort the dynamic function. ***PLEASE UNCOMMENT THIS IN LIVE FUNCTION**** 
 
     #... prepare the harvesting BUY orders for those without them
 
@@ -451,10 +450,14 @@ def dynamic(ib):
 
     tickers = ib.reqTickers(*contracts)
     optPrices = {t.contract.conId: t.marketPrice() for t in tickers} # {conId: optPrice}
+    
+    # Put the option prices
     df_buy = df_buy.assign(optPrice = df_buy.conId.map(optPrices))
+    df_buy = df_buy.assign(optPrice = df_buy.optPrice.fillna(prec)) # make NaN to lowest price (prec)
 
     # get the harvest price
-    df_buy = df_buy.assign(hvstPrice=[get_prec(min(hvstPricePct(d)*c,mp*0.9),0.05) for d, c, mp in zip(df_buy.dte, df_buy.avgCost, df_buy.optPrice)])
+    df_buy = df_buy.assign(hvstPrice=[get_prec(min(hvstPricePct(d)*c,mp*0.9),prec) 
+                                  for d, c, mp in zip(df_buy.dte, df_buy.avgCost, df_buy.optPrice)])
 
     #...prepare the SELL orders
 
@@ -463,9 +466,16 @@ def dynamic(ib):
     # update target with remaining quantities
     dft = pd.read_pickle(fspath+'targets.pickle')
 
-    # prepare the target
+    # prepare the target and refresh
     dft = dft.assign(remqty=dft.symbol.map(dfrq.remqty.to_dict()))   # remaining quantities
     dft = dft[dft.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty <= 0)
+
+    dft = upd(ib, dft)
+
+    # adjust optprice for fall-rise risk
+    risky = riskyprice(dft, 0.01)
+    dft = dft.assign(expPrice = 
+               dft.assign(risky=dft.optId.map(risky))[['expPrice', 'risky']].max(axis=1))
 
     if not df_openord.empty:
     #... As there are some open orders, 
@@ -476,7 +486,7 @@ def dynamic(ib):
 
         # remove the exising buys
         df_bx = df_openord[df_openord.action == 'BUY']
-        df_buy = df_pc[~df_pc.conId.isin(list(df_bx.conId))]
+        df_buy = df_buy[~df_buy.conId.isin(list(df_bx.conId))]
 
         fill_symbols = []
         if ib.fills():     # get fill symbols, if there are any SELL fills!
@@ -486,7 +496,7 @@ def dynamic(ib):
             df_fc
 
             df_fe = util.df(list(util.df(ib.fills())['execution'])) # executed contracts
-            df_fe = df_fe[list(df_fe)[4:13]].drop('liquidation', 1)
+            df_fe = df_fe[list(df_fe)[4:13]].drop('liquidation', 1) 
 
             df_fill = df_fc.join(df_fe)
 
@@ -496,14 +506,15 @@ def dynamic(ib):
             # identify the recalc orders which needs to be cancelled and reordered
             df_rcalc = dft[dft.symbol.isin(fill_symbols)]
 
+            sell_ordId = df_openord[df_openord.action == 'SELL'].set_index('conId')['orderId'].to_dict()
+
             # cancel the SELL orders
-            sell_ordId = df_openord[df_openord.action == 'SELL'].set_index('conId')[['orderId']].to_dict()['orderId']
             df_cancel_rc = df_rcalc.assign(ordId=df_rcalc.optId.astype('int32').map(sell_ordId)).dropna()
+
             cancelords = [o for o in ib.openOrders() if o.orderId in list(df_cancel_rc.ordId.astype(int))]
             rc_cancelled = [ib.cancelOrder(c) for c in cancelords]
 
-            # update and jackup expPrice to cover the risk
-            df_rcalc = upd(ib, df_rcalc)
+            # jackup expPrice to cover the risk
             df_rcalc = df_rcalc.assign(expPrice=get_prec(df_rcalc.expPrice*jackup,0.05))
             # re-calculate expRom
             df_rcalc = df_rcalc.assign(expRom=df_rcalc.expPrice*df_rcalc.lot/df_rcalc.margin*365/df_rcalc.dte)
@@ -516,19 +527,31 @@ def dynamic(ib):
 
             # write to pickle
             dft.to_pickle((fspath+'targets.pickle'))
+            
+        else: # no fills but have open orders!
+            m_opord = (df_openord.action == 'SELL')
+            df_sells = df_openord[m_opord]
 
+            # cancel the SELL openorders
+            cancel_list = [o for o in ib.openOrders() if o.orderId in list(df_sells.orderId)]
+            cancelled = [ib.cancelOrder(c) for c in cancel_list]            
+        
     #...prepare to place the orders
     buy_orders = [LimitOrder(action='BUY', totalQuantity=-position, lmtPrice=hvstPrice) 
                           for position, hvstPrice in zip(df_buy.position, df_buy.hvstPrice)]
     hco = zip(contracts, buy_orders)
+    l_hco = list(hco)
+
     sell_blks = trade_blocks(ib, dft, exchange=exchange)
 
     # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     # WARNING: THE FOLLOWING CODE PLACES TRADES
     # _________________________________________
-    hvstTrades = [ib.placeOrder(c, o) for c, o in hco]
-    sowTrades = doTrades(ib, sell_blks)
-        
+    if l_hco:
+        hvstTrades = [ib.placeOrder(c, o) for c, o in l_hco]
+    if sell_blks:
+        sowTrades = doTrades(ib, sell_blks)
+    
     return None
 
 #_____________________________________
