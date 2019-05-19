@@ -17,7 +17,8 @@
         "tradingdays": 252,
 		"ovallmarginlmt": 0.8,
 		"jackup": 1.25,
-		"prec": 0.05
+		"prec": 0.05,
+		"maxsellqty": 7
     },
     "snp": {
         "blk": 50,
@@ -37,6 +38,7 @@
         "tradingdays": 252,
 		"ovallmarginlmt": 0.8,
 		"jackup": 1.25,
-		"prec":0.01
+		"prec":0.01,
+		"maxsellqty": 20
     }
 }

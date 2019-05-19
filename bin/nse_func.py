@@ -343,6 +343,7 @@ def gen_expPrice(ib, df):
     callRise = (df.right == 'C') & ((df.strike - df.undPrice) > df.Rise)
 
     df = df.assign(qty=np.where(callRise | putFall, df.remqty, 1))
+    df = df.assign(qty=np.where(df.qty <= maxsellqty, df.qty, maxsellqty)) # limit sellquantities
     
     df = grp_opts(df)
 
