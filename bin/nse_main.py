@@ -35,20 +35,22 @@ if ip is 1:    # build the base
         
         util.logToFile(logpath+'build.log')
         
-        util.logging.info('####                 NSE BASE BUILD STARTED                  ####')
-        base(ib)
-        util.logging.info('____________________NSE BASE BUILD COMPLETE______________________')
-
-        # get the rom and optPrice
-        opts(ib)
-        util.logging.info('__________________NSE OPTIONS BUILD COMPLETE_____________________')
-
-        # make the targets
-        targets(ib)
-        util.logging.info('_________________NSE TARGETS BUILD COMPLETED_____________________')
+        util.logging.info('####                     NSE BUILD STARTED                  ####')
         
-        # make the watchlists
-        watchlists(ib)
+        # generate the symexplots
+        df_l = symexplots(ib)
+        
+        # get the options
+        df_opts = get_opts(ib, df_l)
+        
+        util.logging.info('________________________NSE BUILD COMPLETE______________________')
+
+#         # make the targets
+#         targets(ib)
+#         util.logging.info('_________________NSE TARGETS BUILD COMPLETED_____________________')
+        
+#         # make the watchlists
+#         watchlists(ib)
         
 else:         # place dynamic trades
 

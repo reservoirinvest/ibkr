@@ -169,10 +169,24 @@ These need to be included on top of modules with the following code:
 ### hvstPricePct   *getting harvest price percentage, based on curve*
 (dte)  ---> returns the price percentage to harvest
 
-### trade_blocks   * makes blocks for placing trades*
+### trade_blocks   *makes blocks for placing trades*
 (ib, df)    ---> returns blocks for placing trades
 
-### doTrades         *place the trades*
+### doTrades        *place the trades*
 (ib, coblks)  ---> returns list of trades done
+
+### riskyprice		*adjusts expPrice to accommodate fall-rise risk*
+* Note this needs Rise and Fall fields in the input dataframe
+(dft, prec)     ---> returns df with adjusted expPrice
+
+### pf				*gives the current portfolio sorted by unrealizedPNL*
+(ib)         ---> df of portfolio
+
+### closest_margin	*gives the margin of the strike, closest to the underlying price
+* This is a surrogate for margins, in case margins don't exist
+(ib, df_opt, exchange)   ---> df with *xStrike* and *undMargin* fields
+
+### getMarginAsync	# gives the margins through asyncio
+(ib, c, o, m={})    ---> dictionary of margins with {conId:margin}
 
 ************************************************************************************

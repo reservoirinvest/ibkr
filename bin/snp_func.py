@@ -68,7 +68,7 @@ def opts(ib):
 
     # get the margins
     orders = [Order(action='SELL', orderType='MKT', totalQuantity=100, whatIf=True)]*len(contracts)
-    margins = [ib.whatIfOrder(c, o).initMarginChange for c, o in zip(contracts, orders)]
+    margins = [float(catch(lambda: (ib.whatIfOrder(c, o).initMarginChange))) for c, o in zip(contracts, orders)]
     m_dict = {s.symbol:m for s, m in zip(contracts, margins)}
 
     # get the undPrices
@@ -174,10 +174,9 @@ def opts(ib):
     orders = [Order(action='SELL', orderType='MKT', totalQuantity=1, whatIf=True)]*len(c_dict)
 
     # get the margins
-    margins = [ib.whatIfOrder(c, o).initMarginChange for c, o in zip(c_dict.values(), orders)]
+    margins = [float(catch(lambda: (ib.whatIfOrder(c, o).initMarginChange))) for c, o in zip(c_dict.values(), orders)]
 
     df_opt = df_opt.assign(optMargin = margins)
-    df_opt = df_opt.assign(optMargin = abs(pd.to_numeric(df_opt.optMargin).astype('float'))) # convert to float
     df_opt = df_opt[df_opt.optMargin < 1e7] # remove options with very large margins
 
     # get the rom
@@ -375,12 +374,12 @@ def watchlists(ib):
 
 # dynamic.py
 def dynamic(ib):
-    '''For dynamic (live) trading (~3 mins)
+    '''For dynamic (live) trading (~30 seconds for 250 target trades)
     Arg: (ib) as connection object
     Returns: None. Does the following:
       1) Places BUY trades for those that don't have closing (harvest) trades
       2) If overall margin limit is busted, cancels all SELL trades
-      3) '''
+      3) If overall limit is not busted, prepare appropriate SELL trades and places them'''
 
     sell_blks = [] # Initialize sell blocks
 

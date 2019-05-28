@@ -272,7 +272,7 @@ def hvstPricePct(dte):
     if dte > 30:
         dte = 30  # Forces the max DTE to be 30 days
     
-    xpp = (103.6008 - 3.63457*dte + 0.03454677*dte*dte)/100
+    xpp = 1-(103.6008 - 3.63457*dte + 0.03454677*dte*dte)/100
     
     return xpp
 
@@ -349,6 +349,67 @@ def riskyprice(dft, prec):
     df_risky = df_risky.assign(expPrice = get_prec(df_risky.FRpct*df_risky.expPrice, prec))
 
     return df_risky.set_index('optId')['expPrice'].to_dict()
+
+#_____________________________________
+
+# pf.py
+def pf(ib):
+    '''gives portfolio sorted by unrealizedPNL
+    Arg: (ib) as connection object
+    Returns: pf as portfolio dataframe'''
+    pf = util.df(ib.portfolio())
+    pc = util.df(list(pf.contract)).iloc[:, :6]
+    pf = pc.join(pf.drop('contract',1)).sort_values('unrealizedPNL', ascending=True)
+    return pf
+
+#_____________________________________
+
+# closest_margin.py
+def closest_margin(ib, df_opt, exchange):
+    '''find the margin of the closest strike
+    Args:
+        (ib) as connection object
+        (df_opt) as a single symbol option df with strikes & undPrice
+        (exchange) as <'NSE'> | <'SNP'>
+    Returns:
+        (df_opt) with the closest margin field'''
+    #... find margin for closest strike
+    closest = df_opt.loc[abs(df_opt.strike-df_opt.undPrice.unique()).idxmin(), :].to_dict() # closest strike to undPrice
+
+    x_opt = Option(symbol=closest['symbol'], lastTradeDateOrContractMonth=closest['expiration'], \
+                   strike=closest['strike'], right=closest['right'], exchange=exchange)
+
+    ocm = ib.qualifyContracts(x_opt) # opt contract for margin
+
+    ocm_ord = Order(action='SELL', orderType='MKT', totalQuantity=closest['lot'], whatIf=True)
+    margin = float(ib.whatIfOrder(*ocm, ocm_ord).initMarginChange)
+
+    df_opt = df_opt.assign(undMargin=margin, xStrike=ocm[0].strike)
+    
+    return df_opt
+
+#_____________________________________
+
+# getMarginAsync.py
+import asyncio
+
+async def getMarginAsync(ib, c, o):
+    '''computes the margin
+    Args:
+        (ib) as connection object
+        (c) as a contract
+        (o) as an order
+    Returns:
+        {m}: dictionary of localSymbol: margin as float'''
+
+    try:
+        aw = await asyncio.wait_for(ib.whatIfOrderAsync(c, o), timeout=2) # waits for 2 seconds
+
+    except asyncio.TimeoutError: # fails the timeout
+        return {c.conId:np.nan} # appends a null for failed timeout
+
+    # success!
+    return {c.conId:float(aw.initMarginChange)}
 
 #_____________________________________
 
