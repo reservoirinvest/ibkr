@@ -1,7 +1,10 @@
-*.log
-.ipynb_checkpoints
-venv
-__pycache__
-.idea
-*~
-z*.*
+# ignore all files except ipynb files
+*
+
+# But do not ignore ipynb and MD files
+!
+*.ipynb
+*.MD
+*.md
+
+

@@ -7,7 +7,7 @@ from os import listdir
 import logging
 from bs4 import BeautifulSoup
 import csv
-from tqdm.auto import tqdm
+from tqdm import trange
 import time
 import asyncio
 
@@ -103,8 +103,8 @@ def symexplots(ib):
     # get the dte
     df_l = df_l.assign(dte=[get_dte(e) for e in df_l.expiration])
 
-    # make the dataframe to be in between min and max dte (final list)
-    df_l = df_l[df_l.dte.between(mindte, maxdte)].reset_index(drop=True)
+    # make the dataframe to be in between 1 and max dte (final list)
+    df_l = df_l[df_l.dte.between(1, maxdte)].reset_index(drop=True)
 
     # arrange the columns:
     df_l = df_l[['symbol', 'scripType', 'undId', 'undPrice', 'dte', 'expiration', 'lot']]
@@ -133,25 +133,27 @@ def do_hist(ib, undId):
     df_hist = df_hist.assign(date=pd.to_datetime(df_hist.date, format='%Y-%m-%d'))
     df_hist.insert(loc=0, column='symbol', value=qc.symbol)
     df_hist = df_hist.sort_values('date', ascending = False).reset_index(drop=True)
-    df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pickle')
+#     df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pickle')
     return df_hist
 
 #_____________________________________
 
 # do_an_opt.py
-def do_an_opt(ib, row):
+def do_an_opt(ib, row, df_l):
     '''Gets the options for a contract
     Args:
         (ib) as connection object
-        (row_1) as data series row from df_l
+        (row) as data series row from df_l
+        (df_l) for expiries with different lots check
     Returns:
         df_opt as options dataframe
         pickles df_opt to symbol.pickle
         '''
+
     chain = ib.reqSecDefOptParams(underlyingSymbol=row.symbol,
-                                                underlyingSecType=row.scripType,
-                                                underlyingConId=row.undId,
-                                                futFopExchange='')
+                                            underlyingSecType=row.scripType,
+                                            underlyingConId=row.undId,
+                                            futFopExchange='')
 
     strikes = [x for c in chain for x in c.strikes]
 
@@ -170,117 +172,230 @@ def do_an_opt(ib, row):
 
     df_opt = df_opt.assign(dte=[get_dte(d) for d in df_opt.expiration])
 
+    # weed dtes greater than maxdte
+    df_opt = df_opt[df_opt.dte.between(1, maxdte)].reset_index(drop=True)
+
     # weed option contracts within standard deviations band
-    df_hist = do_hist(ib, row.undId)
+    df_hist = catch(lambda: do_hist(ib, row.undId))
 
-    df_hist = df_hist.assign(rollstd = df_hist.close.expanding(1).std())
-    std4dte = {d: df_hist.rollstd[d] for d in pd.Series(df_opt.dte.unique())}
+    if type(df_hist) != float: # df_hist is not nan from catch!
 
-    df_opt = df_opt.assign(stdLimit=np.where(df_opt.right == 'P', df_opt.dte.map(std4dte)*putstdmult, df_opt.dte.map(std4dte)*callstdmult))
-    df_opt = df_opt.assign(strkLimit = np.where(df_opt.right == 'P', df_opt.undPrice - df_opt.stdLimit, df_opt.undPrice + df_opt.stdLimit))
+        df_hist = df_hist.assign(rollstd = df_hist.close.expanding(1).std())
 
-    x_mask = ((df_opt.right == 'P') & (df_opt.strike < df_opt.strkLimit)) | ((df_opt.right == 'C') & (df_opt.strike > df_opt.strkLimit))
-    df_opt = df_opt[x_mask]
+        std4dte = {d: df_hist.rollstd[d] for d in pd.Series(df_opt.dte.unique())}
 
-    # ... get the conId of the option contracts
-    optipl = [Option(s, e, k, r, exchange) for s, e, k, r in zip(df_opt.symbol, df_opt.expiration, df_opt.strike, df_opt.right)]
-    optblks = [optipl[i: i+blk] for i in range(0, len(optipl), blk)] # blocks of optipl
+        df_opt = df_opt.assign(stdLimit=np.where(df_opt.right == 'P', df_opt.dte.map(std4dte)*putstdmult, df_opt.dte.map(std4dte)*callstdmult))
+        df_opt = df_opt.assign(strkLimit = np.where(df_opt.right == 'P', df_opt.undPrice - df_opt.stdLimit, df_opt.undPrice + df_opt.stdLimit))
 
-    # qualify the contracts
-    cblks = [ib.qualifyContracts(*s) for s in optblks]
-    contracts = [z for x in cblks for z in x]
+        x_mask = ((df_opt.right == 'P') & (df_opt.strike < df_opt.strkLimit)) | ((df_opt.right == 'C') & (df_opt.strike > df_opt.strkLimit))
+        df_opt = df_opt[x_mask]
 
-    df_conId = util.df(contracts).iloc[:, 1:6]
-    df_conId = df_conId.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+        # ... get the conId of the option contracts
+        optipl = [Option(s, e, k, r, exchange) for s, e, k, r in zip(df_opt.symbol, df_opt.expiration, df_opt.strike, df_opt.right)]
+        optblks = [optipl[i: i+blk] for i in range(0, len(optipl), blk)] # blocks of optipl
 
-    df_opt = pd.merge(df_opt, df_conId, how='left', on=['symbol', 'expiration', 'strike', 'right']).dropna()
+        # qualify the contracts
+        cblks = [ib.qualifyContracts(*s) for s in optblks]
+        contracts = [z for x in cblks for z in x]
 
-    df_opt = df_opt.assign(optId = df_opt.conId.astype('int'))
-    df_opt = df_opt.drop(['stdLimit', 'strkLimit', 'conId'], axis=1)
+        df_conId = util.df(contracts).iloc[:, 1:6]
+        df_conId = df_conId.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
 
-    # get the underlying margin from closest strike
-    df_opt = closest_margin(ib, df_opt, exchange)
+        df_opt = pd.merge(df_opt, df_conId, how='left', on=['symbol', 'expiration', 'strike', 'right']).dropna()
 
-    #... get the margins
+        df_opt = df_opt.assign(optId = df_opt.conId.astype('int'))
+        df_opt = df_opt.drop(['stdLimit', 'strkLimit', 'conId'], axis=1)
 
-    # build contracts and orders
-    opt_con_dict = {c.conId: c for c in contracts if c.conId in list(df_opt.optId)}
-    opt_ord_dict = {i: Order(action='SELL', orderType='MKT', totalQuantity=lot) for i, lot in zip(df_opt.optId, df_opt.lot)}
+        # get the lots from dte
+        dtelot_dict = df_l[df_l.symbol == row.symbol].set_index('dte').lot.to_dict() # {dte: lot}
 
-    # combine contracts and orders
-    opts = zip(df_opt.optId.map(opt_con_dict), df_opt.optId.map(opt_ord_dict))
+        df_opt = df_opt.assign(lot=df_opt.dte.map(dtelot_dict).fillna(df_opt.lot)).reset_index(drop=True)
 
-    # gather and get the margins through asyncio, without the nan
-    g = asyncio.gather(*[getMarginAsync(ib, c, o) for c, o in opts])
-    opt_mgn_dict = {k: v for d in asyncio.run(g) for k, v in d.items()}
+        # get the underlying margin from closest strike
+        df_opt = closest_margin(ib, df_opt, exchange)
 
-    df_opt = df_opt.assign(optMargin=df_opt.optId.map(opt_mgn_dict)).dropna()
+        #... get the margins
 
-     # ... get the prices
-    opt_tickers = ib.reqTickers(*contracts)
-    optPrices = {t.contract.conId: t.marketPrice() for t in opt_tickers}
+        # build contracts and orders
+        opt_con_dict = {c.conId: c for c in contracts if c.conId in list(df_opt.optId)}
+        opt_ord_dict = {i: Order(action='SELL', orderType='MKT', totalQuantity=lot) for i, lot in zip(df_opt.optId, df_opt.lot)}
 
-    df_opt = df_opt.assign(optPrice=df_opt.optId.map(optPrices))
-    df_opt = df_opt.assign(rom=df_opt.optPrice/df_opt.optMargin*365/df_opt.dte*df_opt.lot).sort_values('rom', ascending=False).reset_index(drop=True)
+        # combine contracts and orders
+        opts = zip(df_opt.optId.map(opt_con_dict), df_opt.optId.map(opt_ord_dict))
 
-    # get the 52 week highs and lows
-    df_opt = df_opt.assign(lo52 = df_hist.iloc[:tradingdays].low.min(), hi52 = df_hist.iloc[:tradingdays].high.max())
+        # gather and get the margins through asyncio
+        g = asyncio.gather(*[getMarginAsync(ib, c, o) for c, o in opts])
+        opt_mgn_dict = {k: v for d in asyncio.run(g) for k, v in d.items()}
 
-    df_opt.to_pickle(fspath+'_'+row.symbol+'_'+row.expiration+'.pickle')
+        df_opt = df_opt.assign(optMargin=df_opt.optId.map(opt_mgn_dict)).fillna(df_opt.undMargin)
+
+         # ... get the prices
+        opt_tickers = ib.reqTickers(*contracts)
+        optPrices = {t.contract.conId: t.marketPrice() for t in opt_tickers}
+
+        df_opt = df_opt.assign(optPrice=df_opt.optId.map(optPrices))
+        df_opt = df_opt.assign(rom=df_opt.optPrice/df_opt.optMargin*365/df_opt.dte*df_opt.lot).sort_values('rom', ascending=False).reset_index(drop=True)
+
+        # get the 52 week highs and lows
+        df_opt = df_opt.assign(lo52 = df_hist.iloc[:tradingdays].low.min(), hi52 = df_hist.iloc[:tradingdays].high.max())
+
+        #... get the maximum fall rise for the dtes
+
+        dte_list = sorted(list(df_opt.dte.unique()))
+        fr_dict = [fallrise(df_hist, dte) for dte in dte_list]
+
+        df_opt = df_opt.join(pd.DataFrame(list(df_opt.dte.map({k: v for i in fr_dict for k, v in i.items()}))))
+
+        df_opt.to_pickle(fspath+'_'+row.symbol+'.opt')
     
-    return df_opt
+        return df_opt
+    
+    else: # df_hist failed, so cannot generate df_opt
+        return np.nan
 
 #_____________________________________
 
-# get_opts.py
-def get_opts(ib, df_l):
-    '''get the options pickles
-    Arg: 
+# do_hist_async.py
+async def do_hist_async(ib, undId):
+    '''Historize ohlc
+    Args:
         (ib) as connection object
-        (df_l) as symbol-expiry-lot dataframe
+        (undId) as contractId for underlying symbol
     Returns:
-        df_opts as the options list
-        pickles df_opt for each symbol'''
+        df_hist as dataframe
+        pickles the dataframe by symbol name
+    '''
+    qc = ib.qualifyContracts(Contract(conId=undId))[0]
+    hist = await ib.reqHistoricalDataAsync(contract=qc, endDateTime='', 
+                                        durationStr='365 D', barSizeSetting='1 day',  
+                                                    whatToShow='Trades', useRTH=True)
 
-    # get the underlying contracts qualified
-    indexes = {'BANKNIFTY': 'IND', 'NIFTY50': 'IND', 'NIFTYIT': 'IND'}
+    df_hist = util.df(hist)
+    df_hist = df_hist.assign(date=pd.to_datetime(df_hist.date, format='%Y-%m-%d'))
+    df_hist.insert(loc=0, column='symbol', value=qc.symbol)
+    df_hist = df_hist.sort_values('date', ascending = False).reset_index(drop=True)
+#     df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pickle')
+    await asyncio.sleep(0)
+    return df_hist
 
-    # qualify the underlyings
-    cs = [Index(s, exchange) if s in indexes.keys() else Stock(s, exchange) for s in df_l.ibSymbol.unique()]
-    qcs = ib.qualifyContracts(*cs) # qualified underlyings
-    qcs = [q for c in qcs for q in ib.qualifyContracts(Contract(conId=c.conId))] # to get secType info
-    qcs_dict = {q.symbol: q for q in qcs}
+#_____________________________________
 
-    # get the underlying conId
-    undId = {q.symbol: q.conId for q in qcs}
-    df_l = df_l.assign(undId=df_l.ibSymbol.map(undId))
+# do_an_opt_async.py
+async def do_an_opt_async(ib, row, df_l):
+    '''Gets the options for a contract
+    Args:
+        (ib) as connection object
+        (row) as data series row from df_l
+        (df_l) for expiries with different lots check
+    Returns:
+        df_opt as options dataframe
+        pickles df_opt to symbol.pickle
+        '''
 
-    # get the underlying prices
-    tickers = ib.reqTickers(*qcs)
-    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers} # {symbol: undPrice}
+    chain = ib.reqSecDefOptParams(underlyingSymbol=row.symbol,
+                                            underlyingSecType=row.scripType,
+                                            underlyingConId=row.undId,
+                                            futFopExchange='')
 
-    df_l = df_l.assign(undPrice=df_l.ibSymbol.map(undPrices))
+    strikes = [x for c in chain for x in c.strikes]
 
-    # parameters for ib.reqSecDefOptParams
-    params = {q.symbol: (q.symbol, 'IND', q.conId) if q.symbol in indexes else (q.symbol, 'STK', q.conId) for q in qcs}
+    expirations = [x for c in chain for x in c.expirations]
 
-    # ... pickle the underlyings
+    rights = ['P', 'C']
 
-    df_opts = pd.DataFrame([]) # initialize
+    df_opt = pd.DataFrame(list(product([row.symbol], strikes, 
+                                       expirations, rights, 
+                                       [row.undPrice])))
 
-    tq_qcs = tqdm(qcs)
-    for qc in tq_qcs:
-        tq_qcs.set_description("Processing %s" % qc.symbol) # tqdm output
+    df_opt = df_opt.rename(columns={0:'symbol', 1:'strike', 
+                                    2:'expiration', 3: 'right', 4: 'undPrice'})
 
-        df_opt = do_an_opt(ib, qc, params, df_l, undPrices) # generates options list and pickles them
+    df_opt = df_opt.assign(lot=row.lot)
 
-        # appends and pickles the options
-        df_opts = df_opts.append(df_opt)
-        df_opts.to_pickle(fspath+'opts.pickle')
+    df_opt = df_opt.assign(dte=[get_dte(d) for d in df_opt.expiration])
 
-        df_opt = pd.DataFrame([]) # initialize the dataframe
+    # weed dtes greater than maxdte
+    df_opt = df_opt[df_opt.dte.between(1, maxdte)].reset_index(drop=True)
+
+    # weed option contracts within standard deviations band
+    df_hist = asyncio.run(do_hist_async(ib, row.undId))
+
+    if type(df_hist) != float: # df_hist is not nan from catch!
         
-    return df_opts
+        df_hist = df_hist.assign(rollstd = df_hist.close.expanding(1).std())
+
+        std4dte = {d: df_hist.rollstd[d] for d in pd.Series(df_opt.dte.unique())}
+
+        df_opt = df_opt.assign(stdLimit=np.where(df_opt.right == 'P', df_opt.dte.map(std4dte)*putstdmult, df_opt.dte.map(std4dte)*callstdmult))
+        df_opt = df_opt.assign(strkLimit = np.where(df_opt.right == 'P', df_opt.undPrice - df_opt.stdLimit, df_opt.undPrice + df_opt.stdLimit))
+
+        x_mask = ((df_opt.right == 'P') & (df_opt.strike < df_opt.strkLimit)) | ((df_opt.right == 'C') & (df_opt.strike > df_opt.strkLimit))
+        df_opt = df_opt[x_mask]
+
+        # ... get the conId of the option contracts
+        optipl = [Option(s, e, k, r, exchange) for s, e, k, r in zip(df_opt.symbol, df_opt.expiration, df_opt.strike, df_opt.right)]
+        optblks = [optipl[i: i+blk] for i in range(0, len(optipl), blk)] # blocks of optipl
+
+        # qualify the contracts
+        cblks = [ib.qualifyContracts(*s) for s in optblks]
+        contracts = [z for x in cblks for z in x]
+
+        df_conId = util.df(contracts).iloc[:, 1:6]
+        df_conId = df_conId.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+
+        df_opt = pd.merge(df_opt, df_conId, how='left', on=['symbol', 'expiration', 'strike', 'right']).dropna()
+
+        df_opt = df_opt.assign(optId = df_opt.conId.astype('int'))
+        df_opt = df_opt.drop(['stdLimit', 'strkLimit', 'conId'], axis=1)
+
+        # get the lots from dte
+        dtelot_dict = df_l[df_l.symbol == row.symbol].set_index('dte').lot.to_dict() # {dte: lot}
+
+        df_opt = df_opt.assign(lot=df_opt.dte.map(dtelot_dict).fillna(df_opt.lot)).reset_index(drop=True)
+
+        # get the underlying margin from closest strike
+        df_opt = closest_margin(ib, df_opt, exchange)
+
+        #... get the margins
+
+        # build contracts and orders
+        opt_con_dict = {c.conId: c for c in contracts if c.conId in list(df_opt.optId)}
+        opt_ord_dict = {i: Order(action='SELL', orderType='MKT', totalQuantity=lot) for i, lot in zip(df_opt.optId, df_opt.lot)}
+
+        # combine contracts and orders
+        opts = zip(df_opt.optId.map(opt_con_dict), df_opt.optId.map(opt_ord_dict))
+
+        # gather and get the margins through asyncio
+        g = asyncio.gather(*[getMarginAsync(ib, c, o) for c, o in opts])
+        opt_mgn_dict = {k: v for d in asyncio.run(g) for k, v in d.items()}
+
+        df_opt = df_opt.assign(optMargin=df_opt.optId.map(opt_mgn_dict)).fillna(df_opt.undMargin)
+
+         # ... get the prices
+        opt_tickers = await ib.reqTickersAsync(*contracts)
+        optPrices = {t.contract.conId: t.marketPrice() for t in opt_tickers}
+
+        df_opt = df_opt.assign(optPrice=df_opt.optId.map(optPrices))
+        df_opt = df_opt.assign(rom=df_opt.optPrice/df_opt.optMargin*365/df_opt.dte*df_opt.lot).sort_values('rom', ascending=False).reset_index(drop=True)
+
+        # get the 52 week highs and lows
+        df_opt = df_opt.assign(lo52 = df_hist.iloc[:tradingdays].low.min(), hi52 = df_hist.iloc[:tradingdays].high.max())
+
+        #... get the maximum fall rise for the dtes
+
+        dte_list = sorted(list(df_opt.dte.unique()))
+        fr_dict = [fallrise(df_hist, dte) for dte in dte_list]
+
+        df_opt = df_opt.join(pd.DataFrame(list(df_opt.dte.map({k: v for i in fr_dict for k, v in i.items()}))))
+
+        df_opt.to_pickle(fspath+'_'+row.symbol+'.opt')
+
+        await asyncio.sleep(0)
+
+        return df_opt
+        
+    else: # df_hist failed, so cannot generate df_opt
+        return np.nan
 
 #_____________________________________
 
@@ -339,7 +454,7 @@ def targets(ib):
     df2 = df1[((df1.strike > df1.hi52) | 
                (df1.strike < df1.lo52))].sort_values('rom', ascending=False)
 
-    df2 = df2[df2.margin < 1e+308]  # Remove very large number in margin (1.7976931348623157e+308)
+    df2 = df2[df2.optMargin < 1e+308]  # Remove very large number in margin (1.7976931348623157e+308)
 
     df2 = df2.assign(remqty=df2.symbol.map(dfrq.remqty.to_dict()))   # remaining quantities
     df2 = df2[df2.remqty > 0].reset_index(drop=True) # remove blacklisted (remqty <= 0)
@@ -372,15 +487,15 @@ def gen_expPrice(ib, df):
 
     df.loc[df.expPrice < minOptPrice, 'expPrice'] = minOptPrice # set to minimum optPrice
     
-    df = df.assign(expRom=df.expPrice*df.lot/df.margin*365/df.dte). \
+    df = df.assign(expRom=df.expPrice*df.lot/df.optMargin*365/df.dte). \
           sort_values('rom', ascending=False) # calculate the expected rom
     
     df = df.dropna().reset_index(drop=True)
     
     #... Establish sowing quantities
     
-    putFall = (df.right == 'P') & ((df.undPrice - df.strike) > df.Fall)
-    callRise = (df.right == 'C') & ((df.strike - df.undPrice) > df.Rise)
+    putFall = (df.right == 'P') & ((df.undPrice - df.strike) > df.fall)
+    callRise = (df.right == 'C') & ((df.strike - df.undPrice) > df.rise)
 
     df = df.assign(qty=np.where(callRise | putFall, df.remqty, 1))
     df = df.assign(qty=np.where(df.qty <= maxsellqty, df.qty, maxsellqty)) # limit sellquantities
@@ -573,6 +688,9 @@ def dynamic(ib):
     df_buy = df_buy.assign(hvstPrice=np.where((df_buy.optPrice == df_buy.hvstPrice) &
                  (df_buy.hvstPrice > prec), df_buy.optPrice - prec, df_buy.hvstPrice))
 
+    # make the minimum harvest price to 0.05
+    df_buy.loc[df_buy.hvstPrice <= 0.0, 'hvstPrice'] = 0.05 
+
     #...prepare to place the orders
     buy_orders = [LimitOrder(action='BUY', totalQuantity=-position, lmtPrice=hvstPrice) 
                           for position, hvstPrice in zip(df_buy.position, df_buy.hvstPrice)]
@@ -646,19 +764,19 @@ def dynamic(ib):
                                              df_sell.expPrice]).max())
 
             # recalculate expRom
-            df_sell.assign(expRom=df_sell.expPrice*df_sell.lot/df_sell.margin*365/df_sell.dte)
+            df_sell.assign(expRom=df_sell.expPrice*df_sell.lot/df_sell.undMargin*365/df_sell.dte)
 
             # prepare the sell blocks
             sell_blks = trade_blocks(ib, df_sell, exchange=exchange)
 
-    # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    # WARNING: THE FOLLOWING CODE PLACES TRADES
-    # _________________________________________
-    if hco:
-        hvstTrades = [ib.placeOrder(c, o) for c, o in hco]
+        # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        # WARNING: THE FOLLOWING CODE PLACES TRADES
+        # _________________________________________
+        if hco:
+            hvstTrades = [ib.placeOrder(c, o) for c, o in hco]
 
-    if sell_blks:
-        sowTrades = doTrades(ib, sell_blks)
+        if sell_blks:
+            sowTrades = doTrades(ib, sell_blks)
         
         return None
 

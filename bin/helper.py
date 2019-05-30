@@ -48,60 +48,23 @@ def get_dte(dt):
 
 #_____________________________________
 
-# get_maxfallrisestd.py
-
-from math import sqrt
-import pandas as pd
-
-def get_maxfallrisestd(ib, c, dte, tradingdays, durmult=3):
-    '''gets the rolling max standard deviation
+# fallrise.py
+def fallrise(df_hist, dte):
+    '''Gets the fall and rise for a specific dte
     Args:
-        (ib) as connection object
-        (c) as contract object
-        (dte) as int for no of days for expiry
-        (tradingdays) as int for trading days
-        (durmult) no of samples to go backwards on
+        (df_hist) as a df with historical ohlc
+        (dte) as int for days to expiry
     Returns:
-        hi52, lo52, fall, rise, std as tuple'''
+        {dte: {'fall': fall, 'rise': rise}} as a dictionary of floats'''
+    df = df_hist.set_index('date').sort_index(ascending = True)
+    df = df.assign(delta = df.high.rolling(dte).max() - df.low.rolling(dte).min(), 
+                        pctchange = df.close.pct_change(periods=dte))
 
-    # determine the low52, hi52, fall, rise
-    hist = ib.reqHistoricalData(contract=c, endDateTime='', 
-                                        durationStr='365 D', barSizeSetting='1 day',  
-                                                    whatToShow='Trades', useRTH=True)
-
-    df = util.df(hist)
-    df.insert(0, column='symbol', value=c.symbol)
-
-    df_ohlc = df.set_index('date').sort_index(ascending=True)
-    df = df_ohlc.assign(delta=df_ohlc.high.rolling(dte).max()-df_ohlc.low.rolling(dte).min(), pctchange=df_ohlc.high.pct_change(periods=dte))
-
-    df1 = df.sort_index(ascending=False)
+    df1 = df.sort_index(ascending = False)
     max_fall = df1[df1.pctchange<=0].delta.max()
     max_rise = df1[df1.pctchange>0].delta.max()
-    hi52 = df1.high.max()
-    lo52 = df1.low.min()
-
-    lhfr = (lo52, hi52, max_fall, max_rise)
-
-    # for std, keep only durmult*dte
-    df = df_ohlc.tail(durmult*dte)
-    df_ohlc = df.sort_index(ascending = False)
-
-    # get cumulative standard deviation
-    df_stdev = pd.DataFrame(df_ohlc['close'].expanding(1).std(ddof=0))
-    df_stdev.columns = ['stdev']
-
-    # get cumulative volatility
-    df_vol = pd.DataFrame(df_ohlc['close'].pct_change().expanding(1).std(ddof=0)*sqrt(tradingdays))
-    df_vol.columns = ['volatility']
-
-    df_ohlc1 = df_ohlc.join(df_vol)
-
-    df_ohlc2 = df_ohlc1.join(df_stdev)
-
-    ret = lhfr+(df_ohlc2.stdev.max(),)
     
-    return ret
+    return {dte: {'fall': max_fall, 'rise': max_rise}}
 
 #_____________________________________
 
@@ -202,6 +165,8 @@ def upd_opt(ib, dfopts):
 #_____________________________________
 
 # grp_opts.py
+
+import pandas as pd
 def grp_opts(df):
     '''Groups options and sorts strikes by puts and calls
     Arg: 
@@ -330,19 +295,19 @@ def riskyprice(dft, prec):
         (prec) precision needed as int
     Returns:
         (riskyprice) as dictionary'''
-    pmask = (dft.right == 'P') & (dft.undPrice-dft.strike-dft.expPrice < dft.Fall)
-    df_prisky = pd.merge(dft[pmask][['symbol', 'optId', 'strike', 'right', 'dte', 'undPrice', 'optPrice', 'expPrice', 'Fall', 'Rise', 'expRom', 'qty']], 
+    pmask = (dft.right == 'P') & (dft.undPrice-dft.strike-dft.expPrice < dft.fall)
+    df_prisky = pd.merge(dft[pmask][['symbol', 'optId', 'strike', 'right', 'dte', 'undPrice', 'optPrice', 'expPrice', 'fall', 'rise', 'expRom', 'qty']], 
              pd.DataFrame((dft[pmask].undPrice-dft[pmask].strike-dft[pmask].expPrice)), on=dft[pmask].index).drop('key_0', 1)
 
-    cmask = (dft.right == 'C') & (dft.strike-dft.undPrice-dft.expPrice < dft.Rise)
-    df_crisky = pd.merge(dft[cmask][['symbol', 'optId', 'strike', 'right', 'dte', 'undPrice', 'optPrice', 'expPrice', 'Fall', 'Rise', 'expRom', 'qty']], 
+    cmask = (dft.right == 'C') & (dft.strike-dft.undPrice-dft.expPrice < dft.rise)
+    df_crisky = pd.merge(dft[cmask][['symbol', 'optId', 'strike', 'right', 'dte', 'undPrice', 'optPrice', 'expPrice', 'fall', 'rise', 'expRom', 'qty']], 
              pd.DataFrame((dft[cmask].strike-dft[cmask].undPrice-dft[cmask].expPrice)), on=dft[cmask].index).drop('key_0', 1)
 
     df_risky = pd.concat([df_prisky, df_crisky]).reset_index(drop=True)
 
     df_risky = df_risky.rename(columns={0: 'FallRise'})
 
-    df_risky = df_risky.assign(FRpct=abs(np.where(df_risky.right == 'P', (df_risky.FallRise - df_risky.Fall)/df_risky.FallRise, (df_risky.FallRise - df_risky.Rise)/df_risky.FallRise)))
+    df_risky = df_risky.assign(FRpct=abs(np.where(df_risky.right == 'P', (df_risky.FallRise - df_risky.fall)/df_risky.FallRise, (df_risky.FallRise - df_risky.rise)/df_risky.FallRise)))
 
     df_risky = df_risky.sort_values('FRpct', ascending=False)
 

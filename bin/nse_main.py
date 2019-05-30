@@ -11,22 +11,31 @@ for v in a:
 
 from ib_insync import *
 
+# logic to create opts.pickle
+fs = [f for f in listdir(fspath) if f[-3:] == 'opt'] # opt pickles files
+
+if fs: # if the file list is not empty
+    df_opts = pd.concat([pd.read_pickle(fspath+f) for f in fs]).reset_index(drop=True)
+
+    # write to pickle
+    df_opts.to_pickle(fspath+'opts.pickle')
+
 # Get user input
-askmsg = "1) Build Targets (45 mins)\n" + "2) Dynamically Manage (2 mins)\n" + "   Please choose 1 or 2: "
+askmsg = "1) Build ALL Opts+Target\n" + "2) Build remaining Opts+Target\n" + "3) Dynamically Manage (2 mins)\n\n" + "   Please choose 1, 2 or 3:\n\n"
 while True:
     try:
         ip = int(input(askmsg))
     except ValueError:
         print("Sorry, I didn't understand that")
         continue # loop again
-    if not ip in [1, 2]:
+    if not ip in [1, 2, 3]:
         print("Please choose the right number")
         continue # loop again
     else:
         break # success and exit loop
 
 # do the appropriate function
-if ip is 1:    # build the base
+if ip in [1, 2]:    #  build ALL the options
     
     with get_connected('nse', 'live') as ib:
         
@@ -36,34 +45,49 @@ if ip is 1:    # build the base
         util.logToFile(logpath+'build.log')
         
         util.logging.info('####                     NSE BUILD STARTED                  ####')
+        print(f'NSE options build started at {datetime.datetime.now()}...')
+        s = time.perf_counter()
         
         # generate the symexplots
         df_l = symexplots(ib)
         
-        # get the options
-        df_opts = get_opts(ib, df_l)
+        # get the series of rows for options
+        rows = [s for i, s in df_l.iterrows()]
         
-        util.logging.info('________________________NSE BUILD COMPLETE______________________')
+        if ip is 2:
+            # remove rows already pickled
+            pkl_done = pd.read_pickle(fspath+'opts.pickle').symbol.unique()
+            rows = [row for row in rows if row.symbol not in pkl_done]
 
-#         # make the targets
-#         targets(ib)
-#         util.logging.info('_________________NSE TARGETS BUILD COMPLETED_____________________')
-        
-#         # make the watchlists
-#         watchlists(ib)
-        
-else:         # place dynamic trades
+        # get the options
+        tqr = trange(len(rows), desc='Processing', leave=True) # Initializing tqdm # initializing tqdm
+        opts = [] # initializing list of opts
+
+        for row in rows:
+            tqr.set_description(f"Processing [{row.symbol}]")
+            tqr.refresh() # to show immediately the update
+            opts.append([do_an_opt(ib, row, df_l)])
+            tqr.update(1)
+        tqr.close()
+
+#         [do_an_opt(ib, row, df_l) for row in rows]
+
+        # make the targets
+        targets(ib)
+
+        elapsed = (time.perf_counter() - s)/60
+
+        util.logging.info('________________________NSE BUILD COMPLETE______________________')
+        print(f'NSE options build completed at {datetime.datetime.now()}\n')
+        print(f'...executed in {elapsed:0.1f} minutes.')
+
+          
+elif ip is 3:         # place dynamic trades
 
     with get_connected('nse', 'live') as ib:
 
-        util.logToFile(logpath+'dynamic.log')
-
-        util.logging.info('####               START of Dynamic Manage                   ####')
-
         # run the dynamic update
         dynamic(ib)
-
-        util.logging.info('___________________END of Dynamic Manage_________________________')
         
 # code put inside this will not be executed if nse_main is imported!
 if __name__ == "__main__":
