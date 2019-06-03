@@ -1,18 +1,5 @@
-# imports.py
-import pandas as pd
-import requests
-from io import StringIO
-from itertools import product, repeat
-from os import listdir
-import logging
-from bs4 import BeautifulSoup
-import csv
-from tqdm import trange
-import time
-import asyncio
-
+# imports_and_assignments.py
 from ib_insync import *
-
 from helper import *
 
 # do the assignments from JSON
@@ -133,7 +120,7 @@ def do_hist(ib, undId):
     df_hist = df_hist.assign(date=pd.to_datetime(df_hist.date, format='%Y-%m-%d'))
     df_hist.insert(loc=0, column='symbol', value=qc.symbol)
     df_hist = df_hist.sort_values('date', ascending = False).reset_index(drop=True)
-#     df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pickle')
+    df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pkl')
     return df_hist
 
 #_____________________________________
@@ -274,7 +261,7 @@ async def do_hist_async(ib, undId):
     df_hist = df_hist.assign(date=pd.to_datetime(df_hist.date, format='%Y-%m-%d'))
     df_hist.insert(loc=0, column='symbol', value=qc.symbol)
     df_hist = df_hist.sort_values('date', ascending = False).reset_index(drop=True)
-#     df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pickle')
+    df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pkl')
     await asyncio.sleep(0)
     return df_hist
 
@@ -596,6 +583,13 @@ def dynamic(ib):
       4) Sows them
       5) Re-pickles the target'''
     
+    util.logToFile(logpath+'dynamic.log')
+
+    s = time.perf_counter()
+    print(f"Dynamic Manage is running ...")
+    util.logging.info('####               START of Dynamic Manage                   ####')    
+    
+    
     sell_blks = [] # Initialize sell blocks
 
     # ... make the input dataframes
@@ -777,6 +771,10 @@ def dynamic(ib):
 
         if sell_blks:
             sowTrades = doTrades(ib, sell_blks)
+        
+        util.logging.info('___________________END of Dynamic Manage_________________________')
+        elapsed = (time.perf_counter() - s)
+        print(f'...Dynamic executed in {elapsed:0.1f} seconds.\n Please check for duplicate orders in IBKR -> Classic TWS -> Pending (All) tab')
         
         return None
 

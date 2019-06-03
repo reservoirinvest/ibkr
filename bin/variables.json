@@ -11,7 +11,7 @@
         "minOptPrice": 0.2,
         "minRom": 0.25,
         "mindte": 3,
-        "minexpRom": 0.7,
+        "minexpRom": 1.35,
         "nLargest": 3,
         "nse_assignment_limit": 1500000,
         "tradingdays": 252,

@@ -190,3 +190,59 @@ These need to be included on top of modules with the following code:
 (ib, c, o, m={})    ---> dictionary of margins with {conId:margin}
 
 ************************************************************************************
+
+# DYNAMIC FLOW
+
+## Data structures - DataFrames
+
+### Inputs
+1.  df_ac: gives the account summary. This is used to check overall margin limit
+3.  df_pos: positions give current positions
+3.  df_fill: fills() give the orders which are filled in the current session
+4.  df_openord: gives the orders which are open
+5.  df_t: targets give the target orders
+
+### Outputs
+1.  df_buy gives the buy orders to be placed
+2.  df_sell gives the sell orders to be placed
+3.  cancel - list of orderIds to be cancelled
+
+## Functions
+1.  remqqty(ib) evaluates the remaining quantities
+2.  hvstPricePct(d) - gives the harvest price percent based on dte
+3.  upd(ib, df_t) - updates the price and margins of the target
+4.  riskyprice(df_t, prec) - gives adjusts expPrice based on rise-fall risk.
+5.  trade_blocks(ib, df_t, exchange) makes blocks of trade. This is consumed by place().
+6.  doTrades(co) - places the SELL orders
+
+## Variables
+1. prec is the precision.
+2. jackup is jackup percent for filled orders to cover additional risk. This should be based on the biggest fill price.
+
+
+## Flow
+
+### Prepare BUY harvest orders
+
+Check for positions that don't have harvest openorders
+Prepare the BUY orders for positions without harvest orders
+
+### Overall margin limit check
+
+If the overall limit is busted:
+	cancel all the SELL orders
+	
+	
+### Determine SELL orders
+
+If the overall limit is not busted:
+	find out exist_syms from existing positions
+	cancel SELL orders for the exist_syms
+	get the targets
+	adjust price for fall-rise risk
+	use remaining quantities to clean up the targets
+	jackup the price
+	prepare the SELL orders
+	
+### Place the orders
+	place the BUY and SELL orders for this dynamic session
