@@ -1,0 +1,38 @@
+<svg width="600" height="740" xmlns="http://www.w3.org/2000/svg">
+ <g stroke="null">
+  <title>background</title>
+  <rect height="742" width="602" y="-1" x="-1" stroke="null" fill="#fff" id="canvas_background"/>
+  <g stroke="null" display="none" id="canvasGrid">
+   <rect height="100%" width="100%" y="0" x="0" stroke-width="0" fill="url(#gridpattern)" id="svg_4"/>
+  </g>
+ </g>
+
+ <g stroke="null">
+  <title>Layer 1</title>
+  <rect height="33" width="302" y="9.4375" x="154.5" stroke-width="1.5" stroke="#000" fill="#444444" id="svg_2"/>
+  <text xml:space="preserve" y="34.4375" x="158.7656" text-anchor="start" stroke-width="0" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_1">NSE Scrape - Synchronous</text>
+  <text xml:space="preserve" y="145.4764" x="14.5038" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-style="italic" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_5">extract symbols</text>
+  <text xml:space="preserve" y="598.9308" x="15.5016" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_6">...pickle 365 day history</text>
+  <path d="m34.268501,470.650024l6.1978,-6.218994l-11.9832,0l-11.983101,0l0,-3.850037l0,-3.850037l11.8456,0c6.515099,0 11.845699,-0.194946 11.845699,-0.43396c0,-0.238037 -2.5937,-3.036987 -5.763599,-6.218994l-5.763699,-5.785034l5.3274,0l5.327297,0l8.136105,8.152039l8.136093,8.151001l-8.151695,8.137024l-8.151703,8.135986l-5.608398,0l-5.608398,0l6.1978,-6.218994l0,0l0,0z" transform="rotate(90 36.0454 460.581)" stroke-width="0" stroke-opacity="null" stroke="#000000" fill-opacity="null" fill="#000000" id="svg_7"/>
+  <path d="m32.268459,115.649704l6.1978,-6.218964l-11.983139,0l-11.98312,0l0,-3.849823l0,-3.849854l11.84565,0c6.515091,0 11.845631,-0.195129 11.845631,-0.433609c0,-0.23848 -2.593639,-3.037018 -5.76363,-6.218964l-5.76366,-5.785355l5.327379,0l5.32736,0l8.136082,8.151688l8.136078,8.151672l-8.151688,8.136093l-8.15168,8.136078l-5.608431,0l-5.60845,0l6.197819,-6.218964l0,0z" transform="rotate(90 34.0454 105.581)" stroke-width="0" stroke-opacity="null" stroke="#000000" fill-opacity="null" fill="#000000" id="svg_9"/>
+  <rect height="25" width="191" y="497" x="14.5" stroke-width="0" stroke-opacity="null" stroke="#000000" fill="#aaaaff" id="svg_15"/>
+  <text xml:space="preserve" y="516.0049" x="15.5073" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_10">fn: do_hist(ib, undId)</text>
+  <text xml:space="preserve" y="253.6582" x="15.5073" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_12">for each symbol...</text>
+  <text xml:space="preserve" y="279.1127" x="14.5073" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_13">...get list of expiries and undPrice</text>
+  <text xml:space="preserve" y="548.0218" x="16.5044" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_14">for each underlying...</text>
+  <rect height="25" width="117" y="56.438" x="14.5" stroke-width="0" stroke-opacity="null" stroke="#000000" fill="#aaaaff" id="svg_16"/>
+  <text xml:space="preserve" y="74.5674" x="15.5073" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_17">fn: get_lots()</text>
+  <text xml:space="preserve" y="92.5674" x="226.8296" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="12px" font-family="Helvetica,Arial,sans-serif" id="svg_18">...expiryM has lots on a monthly basis from NSE website</text>
+  <rect height="25" width="176" y="204.5" x="14.5" stroke-width="0" stroke-opacity="null" stroke="#000000" fill="#aaaaff" id="svg_19"/>
+  <text xml:space="preserve" y="223.5049" x="15.5073" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_20">fn: get_xu(symbol)</text>
+  <path d="m32.268459,185.649658l6.1978,-6.218964l-11.983139,0l-11.98312,0l0,-3.849823l0,-3.849838l11.84565,0c6.515099,0 11.845642,-0.195129 11.845642,-0.433624c0,-0.238495 -2.593643,-3.037018 -5.763641,-6.218964l-5.763651,-5.785339l5.327381,0l5.32736,0l8.136078,8.151672l8.136082,8.151688l-8.151691,8.136078l-8.15168,8.136078l-5.608429,0l-5.60845,0l6.197821,-6.218979l0,0l-0.000011,0.000015z" transform="rotate(90 34.0454 175.581)" stroke-width="0" stroke-opacity="null" stroke="#000000" fill-opacity="null" fill="#000000" id="svg_21"/>
+  <path d="m32.268501,323.649994l6.1978,-6.218994l-11.9832,0l-11.983101,0l0,-3.850006l0,-3.850006l11.8456,0c6.515099,0 11.845699,-0.194977 11.845699,-0.43399c0,-0.238007 -2.5937,-3.036987 -5.763599,-6.218994l-5.7637,-5.785004l5.3274,0l5.327299,0l8.136101,8.152008l8.136101,8.151001l-8.151699,8.136993l-8.151703,8.135986l-5.608398,0l-5.6084,0l6.197802,-6.218994l0,0l0,0z" transform="rotate(90 34.0454 313.581)" stroke-width="0" stroke-opacity="null" stroke="#000000" fill-opacity="null" fill="#000000" id="svg_22"/>
+  <rect height="25" width="434" y="346" x="14.5" stroke-width="0" stroke-opacity="null" stroke="#000000" fill="#aaaaff" id="svg_24"/>
+  <text xml:space="preserve" y="366.0049" x="18.5073" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_25">fn: get_nse_chain(symbol, expiry, undPrice, lot)</text>
+  <text xml:space="preserve" y="419.9308" x="15.5016" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_26">...get chains and pickle</text>
+  <text xml:space="preserve" y="418.9268" x="270.8609" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="16px" font-family="Helvetica,Arial,sans-serif" id="svg_27">opt_chain with symbol, expiry, undPrice, lot</text>
+  <text xml:space="preserve" y="395.0218" x="16.5044" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_28">for each expiry...</text>
+  <text xml:space="preserve" y="572.9308" x="16.5016" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="20px" font-family="Helvetica,Arial,sans-serif" id="svg_29">...qualify the underlying options</text>
+  <text xml:space="preserve" y="72.5674" x="206.8296" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="16px" font-family="Helvetica,Arial,sans-serif" id="svg_30">symbol, expiryM, lot</text>
+ </g>
+</svg>
