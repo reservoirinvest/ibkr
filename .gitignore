@@ -1,11 +1,10 @@
-# ignore all files except the ones below
+# ignore all files except the ones below with !
 *
 
 # But do not ignore ipynb and MD files
-!
-*.ipynb
-*.MD
-*.md
-*.svg
+!*.ipynb
+!*.MD
+!*.md
+!*.svg
 
 
