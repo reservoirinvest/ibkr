@@ -1,4 +1,4 @@
-# ignore all files except ipynb files
+# ignore all files except the ones below
 *
 
 # But do not ignore ipynb and MD files
@@ -6,5 +6,6 @@
 *.ipynb
 *.MD
 *.md
+*.svg
 
 
