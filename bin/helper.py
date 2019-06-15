@@ -10,11 +10,14 @@ import logging
 from bs4 import BeautifulSoup
 import csv
 
-from tqdm import trange
+from tqdm import trange, tnrange
 import calendar
 import time
 
 import asyncio
+import aiohttp
+
+from lxml import html
 
 # for requests
 headers = { 
