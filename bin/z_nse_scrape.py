@@ -10,7 +10,7 @@ for v in a:
 
 from ib_insync import *
 
-# ib =  get_connected('nse', 'live')
+ib =  get_connected('nse', 'live')
 
 with open(logpath+'ztest.log', 'w'):
     pass # clear the run log

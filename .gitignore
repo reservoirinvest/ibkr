@@ -1,7 +1,7 @@
 # ignore all files except the ones below with !
 .ipynb_checkpoints
-*.pickle
-*.pkl
+#*.pickle
+#*.pkl
 
 # But do not ignore these files
 !*.ipynb

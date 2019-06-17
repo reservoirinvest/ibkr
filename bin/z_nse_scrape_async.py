@@ -58,6 +58,8 @@ def get_lots():
 
     return lots_df.reset_index(drop=True)
 
+#_____________________________________
+
 # get_xu_async.py
 async def get_xu_async(symbol: str) -> pd.DataFrame():
     '''Gets the symbol, expiry, undPrice'''

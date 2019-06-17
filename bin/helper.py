@@ -1,22 +1,23 @@
 # imports.py
 import pandas as pd
+import numpy as np
 import requests
-
-from io import StringIO
-from itertools import product, repeat
-from os import listdir
-
-import logging
-from bs4 import BeautifulSoup
-import csv
-
-from tqdm import trange, tnrange
 import calendar
 import time
+import datetime
+import logging
+import csv
+import json
 
 import asyncio
 import aiohttp
 
+from io import StringIO
+from itertools import product, repeat
+from os import listdir
+from bs4 import BeautifulSoup
+from tqdm import trange, tnrange
+from math import floor, log10
 from lxml import html
 
 # for requests
@@ -70,8 +71,6 @@ def get_connected(market, trade_type):
 #_____________________________________
 
 # get_dte.py
-import datetime
-
 def get_dte(dt):
     '''Gets days to expiry
     Arg: (dt) as day in string format 'yyyymmdd'
@@ -102,8 +101,6 @@ def fallrise(df_hist, dte):
 #_____________________________________
 
 # catch.py
-import numpy as np
-
 def catch(func, handle=lambda e : e, *args, **kwargs):
     '''List comprehension error catcher
     Args: 
@@ -129,7 +126,6 @@ def save_open_orders(ib, fspath='../data/snp/'):
         (ib) as connection object
         (fspath) to save the files
     Returns: None'''
-    import pandas as pd
     import glob
 
 #     fspath = '../data/snp/'
@@ -198,8 +194,6 @@ def upd_opt(ib, dfopts):
 #_____________________________________
 
 # grp_opts.py
-
-import pandas as pd
 def grp_opts(df):
     '''Groups options and sorts strikes by puts and calls
     Arg: 
@@ -226,8 +220,6 @@ def grp_opts(df):
 
 # get_prec.py
 # get precision, based on the base
-from math import floor, log10
-
 def get_prec(v, base):
     '''gives the precision value
     args:
@@ -239,7 +231,6 @@ def get_prec(v, base):
 #_____________________________________
 
 # assign_var.py
-import json
 def assign_var(market):
     '''Assign variables using exec
     Arg: (market) as string <'nse'>|<'snp' 
@@ -389,8 +380,6 @@ def closest_margin(ib, df_opt, exchange):
 #_____________________________________
 
 # getMarginAsync.py
-import asyncio
-
 async def getMarginAsync(ib, c, o):
     '''computes the margin
     Args:
