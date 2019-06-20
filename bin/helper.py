@@ -8,6 +8,7 @@ import datetime
 import logging
 import csv
 import json
+import sys
 
 import asyncio
 import aiohttp
@@ -16,8 +17,9 @@ from io import StringIO
 from itertools import product, repeat
 from os import listdir
 from bs4 import BeautifulSoup
-from tqdm import trange, tnrange
-from math import floor, log10
+from tqdm import tqdm, tnrange
+
+from math import floor, log10, ceil
 from lxml import html
 
 # for requests

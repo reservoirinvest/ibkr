@@ -494,16 +494,16 @@ def gen_expPrice(ib, df):
 #_____________________________________
 
 # upd.py
-def upd(ib, dfopt):
+def upd(ib, df_tgt):
     '''Updates the nse options' price and margin
     Takes 3 mins for 450 options
     Args:
        (ib) as connection object
-       (dfopt) as the dataframe from targets.pickle
-    Returns: DataFrame with updated undPrice and margin'''
+       (df_tgt) as the dataframe from targets.pickle
+    Returns: DataFrame with updated option price and margin'''
     
     # get the contracts
-    cs=[Contract(conId=c) for c in dfopt.optId]
+    cs=[Contract(conId=c) for c in df_tgt.optId]
 
     blks = [cs[i: i+blk] for i in range(0, len(cs), blk)]
     cblks = [ib.qualifyContracts(*s) for s in blks]
@@ -511,18 +511,18 @@ def upd(ib, dfopt):
 
     # update prices
     tickers = ib.reqTickers(*contracts)
-    
+
     x = []
     def getTickers(tickers):
         x.append(tickers)
     ib.pendingTickersEvent += getTickers
-    
+
     optPrices = {t.contract.conId: t.marketPrice() for t in tickers} # {symbol: undPrice}
 
-    dfopt = dfopt.assign(optPrice = dfopt.optId.map(optPrices))
+    df_tgt = df_tgt.assign(optPrice = df_tgt.optId.map(optPrices))
 
     # get the margins
-    orders = [Order(action='SELL', orderType='MKT', totalQuantity=lot, whatIf=True) for lot in dfopt.lot]
+    orders = [Order(action='SELL', orderType='MKT', totalQuantity=lot, whatIf=True) for lot in df_tgt.lot]
 
     mdict = {c.conId: ib.whatIfOrder(c, o).initMarginChange for c, o in zip(contracts, orders)} # making dictionary takes time!
 
@@ -530,15 +530,12 @@ def upd(ib, dfopt):
     mdict = {key: value for key, value in mdict.items() if float(value) < 1e7}
 
     # assign the margins
-    dfopt = dfopt.assign(margin=dfopt.optId.map(mdict).astype('float'))
+    df_tgt = df_tgt.assign(margin=df_tgt.optId.map(mdict).astype('float'))
 
     # calculate rom
-    dfopt = dfopt.assign(rom=dfopt.optPrice/dfopt.margin*365/dfopt.dte*dfopt.lot)
-
-    # regenerate expected price
-    df = gen_expPrice(ib, dfopt)
+    df_tgt = df_tgt.assign(rom=df_tgt.optPrice/df_tgt.margin*365/df_tgt.dte*df_tgt.lot)
     
-    return df
+    return df_tgt
 
 #_____________________________________
 

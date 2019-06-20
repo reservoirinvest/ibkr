@@ -1,7 +1,12 @@
 # ignore all files except the ones below with !
 .ipynb_checkpoints
-#*.pickle
-#*.pkl
+zzJunk
+*.pkl
+*.xlsx
+
+
+# ignore sub-folders
+**/bin/__pycache__/
 
 # But do not ignore these files
 !*.ipynb

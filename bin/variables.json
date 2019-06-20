@@ -11,14 +11,16 @@
         "minOptPrice": 0.2,
         "minRom": 0.25,
         "mindte": 3,
-        "minexpRom": 1.35,
+        "minexpRom": 0.5,
         "nLargest": 3,
         "nse_assignment_limit": 1500000,
         "tradingdays": 252,
 		"ovallmarginlmt": 0.8,
 		"jackup": 1.25,
 		"prec": 0.05,
-		"maxsellqty": 7
+		"maxsellqty": 7,
+        "frmult": 0.9,
+        "blacklist":["RCOM", "JETAIRWAY"]
     },
     "snp": {
         "blk": 50,
@@ -39,6 +41,8 @@
 		"ovallmarginlmt": 0.8,
 		"jackup": 1.25,
 		"prec":0.01,
-		"maxsellqty": 20
+		"maxsellqty": 20,
+        "frmult": 0.75,
+        "blacklist":["VXX","P", "TSRO", "GOOGL"]       
     }
 }
