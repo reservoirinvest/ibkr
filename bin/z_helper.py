@@ -1,4 +1,4 @@
-# imports.py
+# imports_headers.py
 import pandas as pd
 import numpy as np
 import requests
@@ -10,12 +10,14 @@ import csv
 import json
 import sys
 
-import asyncio
-import aiohttp
+# import asyncio
+# import aiohttp
+
+from ib_insync import *
 
 from io import StringIO
 from itertools import product, repeat
-from os import listdir
+from os import listdir, path
 from bs4 import BeautifulSoup
 from tqdm import tqdm, tnrange
 
@@ -32,10 +34,52 @@ headers = {
 'Connection' : 'close'
 }
 
+
+#_____________________________________
+
+# assign_var.py
+def assign_var(market):
+    '''Assign variables using exec
+    Arg: (market) as string <'nse'>|<'snp' 
+    Returns: VarList as a list of strings containing assignments
+             These will be executed upon using exec()'''
+
+    with open('variables.json', 'r') as fp:
+        varDict = json.load(fp)
+    
+    varList = [str(k+"='"+str(v)+"'")  if type(v) is str
+               else (str(k+'='+ str(v))) if type(v) is list
+               else str(k+'='+str(v)) for k, v in varDict[market].items()]
+    return varList
+
+# from json
+a = assign_var('nse')
+for v in a:
+    exec(v)
+
+#_____________________________________
+
+# catch.py
+def catch(func, handle=lambda e : e, *args, **kwargs):
+    '''List comprehension error catcher
+    Args: 
+        (func) as the function
+         (handle) as the lambda of function
+         <*args | *kwargs> as arguments to the functions
+    Outputs:
+        output of the function | <np.nan> on error
+    Usage:
+        eggs = [1,3,0,3,2]
+        [catch(lambda: 1/egg) for egg in eggs]'''
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        return np.nan
+
 #_____________________________________
 
 # get_connected.py
-from ib_insync import *
+
 def get_connected(market, trade_type):
     ''' get connected to ibkr
     Args: 
@@ -72,6 +116,30 @@ def get_connected(market, trade_type):
 
 #_____________________________________
 
+# do_hist.py
+def do_hist(ib, undId):
+    '''Historize ohlc
+    Args:
+        (ib) as connection object
+        (undId) as contractId for underlying symbol in int
+    Returns:
+        df_hist as dataframe with running standard deviation in stDev
+        pickles the dataframe by symbol name
+    '''
+    qc = ib.qualifyContracts(Contract(conId=int(undId)))[0]
+    hist = ib.reqHistoricalData(contract=qc, endDateTime='', 
+                                        durationStr='365 D', barSizeSetting='1 day',  
+                                                    whatToShow='Trades', useRTH=True)
+    df_hist = util.df(hist)
+    df_hist = df_hist.assign(date=pd.to_datetime(df_hist.date, format='%Y-%m-%d'))
+    df_hist.insert(loc=0, column='symbol', value=qc.symbol)
+    df_hist = df_hist.sort_values('date', ascending = False).reset_index(drop=True)
+    df_hist=df_hist.assign(stDev=df_hist.close.expanding(1).std(ddof=0))
+    df_hist.to_pickle(fspath+'_'+qc.symbol+'_ohlc.pkl')
+    return df_hist
+
+#_____________________________________
+
 # get_dte.py
 def get_dte(dt):
     '''Gets days to expiry
@@ -102,99 +170,6 @@ def fallrise(df_hist, dte):
 
 #_____________________________________
 
-# catch.py
-def catch(func, handle=lambda e : e, *args, **kwargs):
-    '''List comprehension error catcher
-    Args: 
-        (func) as the function
-         (handle) as the lambda of function
-         <*args | *kwargs> as arguments to the functions
-    Outputs:
-        output of the function | <np.nan> on error
-    Usage:
-        eggs = [1,3,0,3,2]
-        [catch(lambda: 1/egg) for egg in eggs]'''
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        return np.nan
-
-#_____________________________________
-
-# save_open_orders.py
-def save_open_orders(ib, fspath='../data/snp/'):
-    '''Saves the open orders, before deleting from the system
-    Arg: 
-        (ib) as connection object
-        (fspath) to save the files
-    Returns: None'''
-    import glob
-
-#     fspath = '../data/snp/'
-    fn = '_openorders'
-    fe = '.pkl'
-
-    filepresent = glob.glob(fspath+fn+fe)
-
-    if filepresent:
-        qn = input(f'File {[f for f in filepresent]} is available. Overwrite?: Y/N ')
-        if qn.upper() != 'Y':
-            return
-
-    ib.reqAllOpenOrders()
-    opTrades = ib.openTrades()
-
-    if opTrades:
-        dfopen = pd.DataFrame.from_dict({o.contract.conId: \
-        (o.contract.symbol, \
-        o.contract.lastTradeDateOrContractMonth, \
-        o.contract.right, \
-        o.order.action, \
-        o.order.totalQuantity, \
-        o.order.orderType, \
-        o.order.lmtPrice, \
-        o.contract, \
-        o.order) \
-        for o in opTrades}).T.reset_index()
-
-        dfopen.columns = ['conId', 'symbol', 'expiration', 'right', 'action', 'qty', 'orderType', 'lmtPrice', 'contract', 'order']
-        dfopen.to_pickle(fspath+fn+fe)
-        return dfopen
-    else:
-        return None
-
-#_____________________________________
-
-# upd_opt.py
-blk = 50
-def upd_opt(ib, dfopts):
-    '''Updates the option prices and roms
-    (ib) as connection object
-    (dfopts) as DataFrame with option contracts and optPrice in it'''
-    
-    # Extract the contracts
-    contracts = [Contract(conId=c) for c in list(dfopts.optId)]
-    
-    # Qualify the contracts in blocks
-    cblks = [contracts[i: i+blk] for i in range(0, len(contracts), blk)]
-    qc = [c for q in [ib.qualifyContracts(*c) for c in cblks] for c in q]
-
-    # Get the tickers of the contracts in blocks
-    tb = [qc[i: i+blk] for i in range(0, len(qc), blk)]
-    tickers = [t for q in [ib.reqTickers(*t) for t in tb] for t in q]
-
-    # Generate the option price dictionary
-    optPrices = {t.contract.conId: t.marketPrice() for t in tickers} # {symbol: optPrice}
-
-    # Update the option prices and rom
-    df = dfopts.set_index('optId')
-    df.optPrice.update(pd.Series(optPrices))
-    df = df.assign(rom=df.optPrice*df.lotsize/df.optMargin*252/df.dte).sort_values('rom', ascending=False)
-    
-    return df
-
-#_____________________________________
-
 # grp_opts.py
 def grp_opts(df):
     '''Groups options and sorts strikes by puts and calls
@@ -221,31 +196,13 @@ def grp_opts(df):
 #_____________________________________
 
 # get_prec.py
-# get precision, based on the base
 def get_prec(v, base):
-    '''gives the precision value
+    '''gives the precision value, based on base
     args:
        (v) as value needing precision in float
        (base) as the base value e.g. 0.05'''
     
     return round(round((v)/ base) * base, -int(floor(log10(base))))
-
-#_____________________________________
-
-# assign_var.py
-def assign_var(market):
-    '''Assign variables using exec
-    Arg: (market) as string <'nse'>|<'snp' 
-    Returns: VarList as a list of strings containing assignments
-             These will be executed upon using exec()'''
-
-    with open('variables.json', 'r') as fp:
-        varDict = json.load(fp)
-    
-    varList = [str(k+"='"+str(v)+"'")  if type(v) is str
-               else (str(k+'='+ str(v))) if type(v) is list
-               else str(k+'='+str(v)) for k, v in varDict[market].items()]
-    return varList
 
 #_____________________________________
 
@@ -378,27 +335,6 @@ def closest_margin(ib, df_opt, exchange):
     df_opt = df_opt.assign(undMargin=margin, xStrike=ocm[0].strike)
     
     return df_opt
-
-#_____________________________________
-
-# getMarginAsync.py
-async def getMarginAsync(ib, c, o):
-    '''computes the margin
-    Args:
-        (ib) as connection object
-        (c) as a contract
-        (o) as an order
-    Returns:
-        {m}: dictionary of localSymbol: margin as float'''
-
-    try:
-        aw = await asyncio.wait_for(ib.whatIfOrderAsync(c, o), timeout=2) # waits for 2 seconds
-
-    except asyncio.TimeoutError: # fails the timeout
-        return {c.conId:np.nan} # appends a null for failed timeout
-
-    # success!
-    return {c.conId:float(aw.initMarginChange)}
 
 #_____________________________________
 

@@ -1,0 +1,19 @@
+2019-06-24 02:00:42,864 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:00:46,921 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:09,408 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:02:09,512 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:09,516 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:02:10,216 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:10,368 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:02:10,387 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:10,428 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:02:10,528 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:10,543 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:02:11,231 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:11,242 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:02:11,247 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:11,253 ib_insync.client WARNING Started to throttle requests
+2019-06-24 02:02:11,262 ib_insync.client WARNING Stopped to throttle requests
+2019-06-24 02:02:11,302 ib_insync.ib INFO Disconnecting from 127.0.0.1:3000, 16.4 kB sent in 405 messages, 529 kB received in 1095 messages, session time 88.5 s.
+2019-06-24 02:02:11,302 ib_insync.client INFO Disconnecting
+2019-06-24 02:02:11,343 ib_insync.client INFO Disconnected
