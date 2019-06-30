@@ -3,45 +3,45 @@
 
  <g>
   <title>background</title>
-  <rect fill="#fff" id="canvas_background" height="504" width="784" y="-1" x="-1"/>
+  <rect height="504" width="784" y="-1" x="-1" fill="#fff" id="canvas_background"/>
  </g>
  <g>
   <title>Layer 1</title>
-  <rect stroke="#999999" id="svg_2" height="51" width="245" y="14.5" x="278.5" stroke-width="0" fill="#b2b2b2"/>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="39" id="svg_1" y="53.5" x="321.88281" stroke-width="0" stroke="#000" fill="#ffffff">Structure</text>
-  <rect stroke="#000" id="svg_3" height="33" width="234" y="401.5" x="43.5" stroke-opacity="null" stroke-width="0" fill="#ff5656"/>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_4" y="426.5" x="49.50781" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">Target</text>
-  <rect stroke="#000" id="svg_7" height="33" width="234" y="203.5" x="43.5" stroke-opacity="null" stroke-width="0" fill="#ff5656"/>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_8" y="228.5" x="49.50781" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">OHLCs</text>
-  <rect stroke="#000" id="svg_9" height="33" width="234" y="145.47675" x="43.5" stroke-opacity="null" stroke-width="0" fill="#ff5656"/>
-  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_10" y="170.47675" x="49.50781" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">All Chains</text>
-  <rect stroke="#000" id="svg_11" height="33" width="234" y="265.5" x="43.5" stroke-opacity="null" stroke-width="0" fill="#ff5656"/>
-  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_12" y="290.5" x="49.50781" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">Downsized Chains</text>
-  <rect stroke="#000" id="svg_13" height="33" width="234" y="331.5" x="43.5" stroke-opacity="null" stroke-width="0" fill="#ff5656"/>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_14" y="356.5" x="49.50781" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">Price &amp; Margin</text>
-  <ellipse ry="32" rx="92" id="svg_15" cy="203.5" cx="416.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#4C261D"/>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_16" y="212" x="379.32813" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">remqty</text>
-  <ellipse ry="32" rx="92" id="svg_17" cy="354.5" cx="415.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#4C261D"/>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_18" y="363" x="368.32031" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">Dynamic</text>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="14" id="svg_19" y="36" x="657.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">with Paper</text>
-  <text stroke="#000" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="14" id="svg_20" y="36" x="593.5" stroke-opacity="null" stroke-width="0" fill="#000000">Live</text>
-  <rect width="38" height="10" ry="5" x="626" y="44" id="ButtonBase" fill="#ff0000" stroke="null"/>
-  <ellipse fill="#ffffff" stroke="#000000" cx="637" cy="49" id="svg_21" rx="7.5" ry="7.5"/>
-  <text font-style="normal" font-weight="bold" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_22" y="125.5" x="587.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="null" fill="#000000">Filters</text>
-  <line stroke-linecap="null" stroke-linejoin="null" id="svg_23" y2="132.5" x2="705.50424" y1="132.5" x1="587.5" stroke-width="null" stroke="#000000" fill="none"/>
-  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_25" y="476" x="584.5" stroke-width="0" stroke="#000000" fill="#000000">Median PoP</text>
-  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_26" y="179" x="587.5" stroke-width="0" stroke="#000000" fill="#000000">HiLo52</text>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_27" y="428" x="584.5" stroke-width="0" stroke="#000000" fill="#000000">Median RoM</text>
-  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_28" y="451" x="584.5" stroke-width="0" stroke="#000000" fill="#000000">Mean PoP</text>
-  <text font-style="normal" font-weight="bold" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_29" y="368.5" x="584.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="null" fill="#000000">Key Statistics</text>
-  <line stroke-linecap="null" stroke-linejoin="null" id="svg_30" y2="375.5" x2="702.50424" y1="375.5" x1="584.5" stroke-width="null" stroke="#000000" fill="none"/>
-  <path stroke="#000000" transform="rotate(90 598.0000000000001,308.00000000000006) " id="sort1" d="m599.18702,299.12668c-5.2467,0 -9.50001,4.25332 -9.50001,9.50002c0,5.24668 4.25332,9.50001 9.50001,9.50001c5.2467,0 9.50001,-4.25333 9.50001,-9.50001c0,-5.2467 -4.25331,-9.50002 -9.50001,-9.50002zm-1.52623,15.85681l-2.31142,-2.31343l4.04411,-4.04386l-4.04411,-4.04386l2.31142,-2.31144l6.35602,6.35529l-6.35602,6.35729l0,0.00001z" stroke-width="null" fill="#000000"/>
-  <text fill="#000000" stroke="#000000" stroke-width="0" stroke-opacity="null" fill-opacity="null" x="614.5" y="315.5" id="svg_24" font-size="18" font-family="Helvetica, Arial, sans-serif" text-anchor="start" xml:space="preserve">RoM by Symbol</text>
-  <path stroke="#000000" transform="rotate(90 598.0000000000001,280.00000000000006) " id="svg_31" d="m599.18702,271.12668c-5.2467,0 -9.50001,4.25332 -9.50001,9.50002c0,5.24668 4.25332,9.50001 9.50001,9.50001c5.2467,0 9.50001,-4.25333 9.50001,-9.50001c0,-5.2467 -4.25331,-9.50002 -9.50001,-9.50002zm-1.52623,15.85681l-2.31142,-2.31343l4.04411,-4.04386l-4.04411,-4.04386l2.31142,-2.31144l6.35602,6.35529l-6.35602,6.35729l0,0.00001z" stroke-width="null" fill="#000000"/>
-  <text fill="#000000" stroke="#000000" stroke-width="0" stroke-opacity="null" fill-opacity="null" x="614.5" y="287.5" id="svg_32" font-size="18" font-family="Helvetica, Arial, sans-serif" text-anchor="start" xml:space="preserve">All RoM</text>
-  <text font-style="normal" font-weight="bold" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_33" y="251.5" x="585.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="null" fill="#000000">Views</text>
-  <line stroke-linecap="null" stroke-linejoin="null" id="svg_34" y2="258.5" x2="702.50424" y1="258.5" x1="584.5" stroke-width="null" stroke="#000000" fill="none"/>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_35" y="405" x="584.5" stroke-width="0" stroke="#000000" fill="#000000">Mean RoM</text>
-  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="18" id="svg_36" y="156" x="587.5" stroke-width="0" stroke="#000000" fill="#000000">FallRise</text>
+  <rect height="51" width="245" y="14.5" x="278.5" stroke-width="0" stroke="#999999" fill="#b2b2b2" id="svg_2"/>
+  <text xml:space="preserve" y="53.5" x="321.8828" text-anchor="start" stroke-width="0" stroke="#000" fill="#ffffff" font-size="39px" font-family="Helvetica,Arial,sans-serif" id="svg_1">Structure</text>
+  <rect height="33" width="234" y="364.5" x="43.5" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ff5656" id="svg_3"/>
+  <text xml:space="preserve" y="389.5" x="49.5078" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_4">Target</text>
+  <rect height="33" width="234" y="203.5" x="43.5" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ff5656" id="svg_7"/>
+  <text xml:space="preserve" y="228.5" x="49.5078" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_8">OHLCs</text>
+  <rect height="33" width="234" y="145.477" x="43.5" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ff5656" id="svg_9"/>
+  <text xml:space="preserve" y="170.4768" x="49.5078" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_10">All Chains</text>
+  <rect height="33" width="234" y="265.5" x="43.5" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ff5656" id="svg_11"/>
+  <text xml:space="preserve" y="290.5" x="49.5078" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_12">Downsized Chains</text>
+  <rect height="33" width="234" y="299.5" x="43.5" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ff5656" id="svg_13"/>
+  <text xml:space="preserve" y="324.5" x="49.5078" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_14">Price &amp; Margin</text>
+  <ellipse ry="32" rx="92" cy="203.5" cx="416.5" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#4c261d" id="svg_15"/>
+  <text xml:space="preserve" y="212" x="379.3281" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_16">remqty</text>
+  <ellipse ry="32" rx="92" cy="354.5" cx="415.5" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#4c261d" id="svg_17"/>
+  <text xml:space="preserve" y="363" x="368.3203" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#ffffff" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_18">Dynamic</text>
+  <text xml:space="preserve" y="36" x="657.5" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#000000" font-size="14px" font-family="Helvetica,Arial,sans-serif" id="svg_19">with Paper</text>
+  <text xml:space="preserve" y="36" x="593.5" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000" fill="#000000" font-size="14px" font-family="Helvetica,Arial,sans-serif" id="svg_20">Live</text>
+  <rect ry="5" height="10" width="38" y="44" x="626" stroke="null" fill="#ff0000" id="ButtonBase"/>
+  <ellipse ry="7.5" rx="7.5" cy="49" cx="637" stroke="#000000" fill="#ffffff" id="svg_21"/>
+  <text xml:space="preserve" y="125.5" x="587.5" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="null" fill-opacity="null" fill="#000000" font-weight="bold" font-style="normal" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_22">Filters</text>
+  <line y2="132.5" x2="705.504" y1="132.5" x1="587.5" stroke-width="null" stroke-linejoin="null" stroke-linecap="null" stroke="#000000" fill="none" id="svg_23"/>
+  <text xml:space="preserve" y="476" x="584.5" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_25">Median PoP</text>
+  <text xml:space="preserve" y="179" x="587.5" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_26">HiLo52</text>
+  <text xml:space="preserve" y="428" x="584.5" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_27">Median RoM</text>
+  <text xml:space="preserve" y="451" x="584.5" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_28">Mean PoP</text>
+  <text xml:space="preserve" y="368.5" x="584.5" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="null" fill-opacity="null" fill="#000000" font-weight="bold" font-style="normal" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_29">Key Statistics</text>
+  <line y2="375.5" x2="702.504" y1="375.5" x1="584.5" stroke-width="null" stroke-linejoin="null" stroke-linecap="null" stroke="#000000" fill="none" id="svg_30"/>
+  <path d="m599.18701,299.12668c-5.2467,0 -9.5,4.25333 -9.5,9.50003c0,5.24667 4.2533,9.5 9.5,9.5c5.2467,0 9.5,-4.25333 9.5,-9.5c0,-5.2467 -4.2533,-9.50003 -9.5,-9.50003zm-1.52625,15.85681l-2.3114,-2.31342l4.04413,-4.04388l-4.04413,-4.04385l2.3114,-2.31143l6.35602,6.35529l-6.35602,6.3573l0,0z" transform="rotate(90 598 308)" stroke-width="null" stroke="#000000" fill="#000000" id="sort1"/>
+  <text xml:space="preserve" y="315.5" x="614.5" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000000" fill-opacity="null" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_24">RoM by Symbol</text>
+  <path d="m599.18701,271.12668c-5.2467,0 -9.5,4.25333 -9.5,9.50003c0,5.24667 4.2533,9.5 9.5,9.5c5.2467,0 9.5,-4.25333 9.5,-9.5c0,-5.2467 -4.2533,-9.50003 -9.5,-9.50003zm-1.52625,15.85681l-2.3114,-2.31342l4.04413,-4.04388l-4.04413,-4.04385l2.3114,-2.31143l6.35602,6.35529l-6.35602,6.3573l0,0z" transform="rotate(90 598 280)" stroke-width="null" stroke="#000000" fill="#000000" id="svg_31"/>
+  <text xml:space="preserve" y="287.5" x="614.5" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="#000000" fill-opacity="null" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_32">All RoM</text>
+  <text xml:space="preserve" y="251.5" x="585.5" text-anchor="start" stroke-width="0" stroke-opacity="null" stroke="null" fill-opacity="null" fill="#000000" font-weight="bold" font-style="normal" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_33">Views</text>
+  <line y2="258.5" x2="702.504" y1="258.5" x1="584.5" stroke-width="null" stroke-linejoin="null" stroke-linecap="null" stroke="#000000" fill="none" id="svg_34"/>
+  <text xml:space="preserve" y="405" x="584.5" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_35">Mean RoM</text>
+  <text xml:space="preserve" y="156" x="587.5" text-anchor="start" stroke-width="0" stroke="#000000" fill="#000000" font-size="18px" font-family="Helvetica,Arial,sans-serif" id="svg_36">FallRise</text>
  </g>
 </svg>

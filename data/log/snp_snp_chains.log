@@ -1,0 +1,28 @@
+2019-06-27 21:07:21,245 ib_insync.client WARNING Started to throttle requests
+2019-06-27 21:07:23,271 ib_insync.client WARNING Stopped to throttle requests
+2019-06-27 21:08:35,887 ib_insync.ib INFO Disconnecting from 127.0.0.1:1300, 7.49 kB sent in 188 messages, 1.19 MB received in 2304 messages, session time 75.7 s.
+2019-06-27 21:08:35,887 ib_insync.client INFO Disconnecting
+2019-06-27 21:08:35,899 ib_insync.client INFO Disconnected
+2019-06-27 21:08:35,899 ib_insync.client INFO Connecting to 127.0.0.1:1300 with clientId 1...
+2019-06-27 21:08:35,901 ib_insync.client INFO Connected
+2019-06-27 21:08:35,905 ib_insync.client INFO Logged on to server version 148
+2019-06-27 21:08:36,426 ib_insync.client ERROR Peer closed connection
+2019-06-27 21:08:36,427 ib_insync.client ERROR clientId 1 already in use?
+2019-06-27 21:08:37,898 ib_insync.client ERROR API connection failed: CancelledError()
+2019-06-27 21:08:37,947 ib_insync.client INFO Connecting to 127.0.0.1:1300 with clientId 2...
+2019-06-27 21:08:37,949 ib_insync.client INFO Connected
+2019-06-27 21:08:37,956 ib_insync.client INFO Logged on to server version 148
+2019-06-27 21:08:37,958 ib_insync.client INFO API connection ready
+2019-06-27 21:08:37,963 ib_insync.wrapper INFO updatePortfolio: PortfolioItem(contract=Stock(conId=366239371, symbol='CTVA', right='0', primaryExchange='NYSE', currency='USD', localSymbol='CTVA', tradingClass='CTVA'), position=66.0, marketPrice=29.5300007, marketValue=1948.98, averageCost=24.84389545, unrealizedPNL=309.28, realizedPNL=0.0, account='U8898867')
+2019-06-27 21:08:37,964 ib_insync.wrapper INFO updatePortfolio: PortfolioItem(contract=Stock(conId=365921621, symbol='DD', right='0', primaryExchange='NYSE', currency='USD', localSymbol='DD', tradingClass='DD'), position=66.0, marketPrice=73.83999635, marketValue=4873.44, averageCost=95.67354395, unrealizedPNL=-1441.01, realizedPNL=0.0, account='U8898867')
+2019-06-27 21:08:37,965 ib_insync.wrapper INFO updatePortfolio: PortfolioItem(contract=Option(conId=365653336, symbol='IBM', lastTradeDateOrContractMonth='20190628', strike=105.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='IBM   190628P00105000', tradingClass='IBM'), position=-1.0, marketPrice=3.45e-06, marketValue=0.0, averageCost=6.904, unrealizedPNL=6.9, realizedPNL=0.0, account='U8898867')
+2019-06-27 21:08:37,965 ib_insync.wrapper INFO updatePortfolio: PortfolioItem(contract=Option(conId=365821216, symbol='UTX', lastTradeDateOrContractMonth='20190628', strike=100.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='UTX   190628P00100000', tradingClass='UTX'), position=-3.0, marketPrice=1.2e-06, marketValue=0.0, averageCost=6.88406665, unrealizedPNL=20.65, realizedPNL=0.0, account='U8898867')
+2019-06-27 21:08:37,966 ib_insync.wrapper INFO position: Position(account='U8898867', contract=Stock(conId=365921621, symbol='DD', exchange='NYSE', currency='USD', localSymbol='DD', tradingClass='DD'), position=66.0, avgCost=95.67354395)
+2019-06-27 21:08:37,966 ib_insync.wrapper INFO position: Position(account='U8898867', contract=Stock(conId=366239371, symbol='CTVA', exchange='NYSE', currency='USD', localSymbol='CTVA', tradingClass='CTVA'), position=66.0, avgCost=24.84389545)
+2019-06-27 21:08:37,967 ib_insync.wrapper INFO position: Position(account='U8898867', contract=Option(conId=365821216, symbol='UTX', lastTradeDateOrContractMonth='20190628', strike=100.0, right='P', multiplier='100', currency='USD', localSymbol='UTX   190628P00100000', tradingClass='UTX'), position=-3.0, avgCost=6.88406665)
+2019-06-27 21:08:37,967 ib_insync.wrapper INFO position: Position(account='U8898867', contract=Option(conId=365653336, symbol='IBM', lastTradeDateOrContractMonth='20190628', strike=105.0, right='P', multiplier='100', currency='USD', localSymbol='IBM   190628P00105000', tradingClass='IBM'), position=-1.0, avgCost=6.904)
+2019-06-27 21:08:37,971 ib_insync.ib INFO Synchronization complete
+2019-06-27 21:08:39,738 ib_insync.wrapper INFO Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2019-06-27 21:11:01,840 ib_insync.ib INFO Disconnecting from 127.0.0.1:1300, 11.8 kB sent in 188 messages, 2.06 MB received in 623 messages, session time 144 s.
+2019-06-27 21:11:01,840 ib_insync.client INFO Disconnecting
+2019-06-27 21:11:01,857 ib_insync.client INFO Disconnected

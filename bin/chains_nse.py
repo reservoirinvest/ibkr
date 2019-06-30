@@ -1,10 +1,16 @@
-# nse_chains.py
+# chains_nse.py
 """Program generates symbols and lots for NSE
 Date: 23-June-2019
 Ver: 1.0
+Time taken: 1 min 10 secs
 """
 
 from z_helper import *
+
+# from json
+a = assign_var('nse') + assign_var('common')
+for v in a:
+    exec(v)
 
 #...nse specific functions
 #..........................
@@ -12,7 +18,7 @@ from z_helper import *
 def get_lots():
     '''Get lots with expiry dates from nse csv
     Arg: None
-    Returns: lots dataframe with expiry as YYYYMM''' 
+    Returns: lots dataframe with expiry as YYYYMM'''
 
     url = 'https://www.nseindia.com/content/fo/fo_mktlots.csv'
     req = requests.get(url)
@@ -66,7 +72,7 @@ def get_xu(symbol: str) -> pd.DataFrame():
     return df.apply(pd.to_numeric, errors = 'ignore')
 
 def get_nse_chain(symbol: str, expiry: 'datetime64', undPrice: float, lot: int) -> pd.DataFrame:
-    '''scrapes option chain from nse website pages'''
+    '''scrapes one option chain from nse website pages'''
     
     url = 'https://www.nseindia.com/live_market/dynaContent/live_watch/option_chain/optionKeys.jsp?symbol='
     
@@ -95,7 +101,7 @@ def get_nse_chain(symbol: str, expiry: 'datetime64', undPrice: float, lot: int) 
     return chain
 
 def nse_chains():
-    '''Gets the symbols and lots from nse
+    '''Gets nse chains with symbols and lots from nse web
     Arg: None
     Returns: df_chains as dataframe of option chains'''
     
@@ -138,7 +144,7 @@ def nse_chains():
     # remove nan from prices
     df_chains = df_chains.dropna(subset=['cBid', 'cAsk', 'cLTP', 'pBid', 'pAsk', 'pLTP']).reset_index(drop=True)
 
-    # convert symbols - friendly to IBKR and pickle the chains
+    # convert symbols - friendly to IBKR
     df_chains = df_chains.assign(symbol=df_chains.symbol.str.slice(0,9))
 
     ntoi = {'M%26M': 'MM', 'M%26MFIN': 'MMFIN', 'L%26TFH': 'LTFH', 'NIFTY': 'NIFTY50', 'CHOLAFIN':'CIFC'}
@@ -160,6 +166,71 @@ def nse_chains():
     # convert datetime to correct format for IB
     df_chains = df_chains.assign(expiry=[e.strftime('%Y%m%d') for e in df_chains.expiry])
                                 
+    return df_chains
+
+def tp_chains():
+    '''Make df_chains from tradeplus
+    Args: None
+    Returns: dataframe of option chains'''
+
+    # extract from tradeplusonline
+    tp = pd.read_html('https://www.tradeplusonline.com/Equity-Futures-Margin-Calculator.aspx')
+    df_tp = tp[1][2:].iloc[:, :3].reset_index(drop=True)
+    df_tp.columns=['symbol', 'lot', 'undPrice']
+    df_tp = df_tp.apply(pd.to_numeric, errors='ignore') # convert lot and undPrice to numeric
+
+    # convert symbols - friendly to IBKR
+    df_tp = df_tp.assign(symbol=df_tp.symbol.str.slice(0,9))
+    ntoi = {'M&M': 'MM', 'M&MFIN': 'MMFIN', 'L&TFH': 'LTFH', 'NIFTY': 'NIFTY50'}
+    df_tp.symbol = df_tp.symbol.replace(ntoi)
+
+    # set the types for indexes as IND
+    ix_symbols = ['NIFTY50', 'BANKNIFTY', 'NIFTYIT']
+
+    # build the underlying contracts
+    scrips = list(df_tp.symbol)
+    und_contracts = [Index(symbol=s, exchange=exchange) if s in ix_symbols else Stock(symbol=s, exchange=exchange) for s in scrips]
+
+    # log to nse_chains.log
+    with open(logpath+'nse_chains.log', 'w'):
+        pass # clear the run log
+    util.logToFile(logpath+'nse_chains.log')
+
+    # build the chains
+    with get_connected('nse', 'live') as ib:
+        contracts=ib.qualifyContracts(*und_contracts)
+        chains = {}
+        with tqdm(total=len(contracts), file=sys.stdout, unit=' contract') as tqc:
+            for contract in contracts:
+                tqc.set_description(f"Getting strikes & expiries for {contract.symbol.ljust(9)}")
+                chains[contract.symbol] = catch(lambda: ib.reqSecDefOptParams(underlyingSymbol=contract.symbol, futFopExchange='', 
+                                              underlyingConId=contract.conId, underlyingSecType=contract.secType))
+                tqc.update(1)
+
+    # build the chain dataframe
+    sek = [(product([k], v.expirations, v.strikes, [v.underlyingConId])) for k, m in chains.items() for v in m]
+    df_chains = pd.DataFrame([i for s in sek for i in s], columns=['symbol', 'expiry', 'strike', 'undId'])
+
+    df_chains = df_chains.set_index('symbol').join(df_tp.set_index('symbol')).reset_index()
+    
+    return df_chains
+
+def get_chains(nseweb=True):
+    '''Gets NSE chains.
+    First preference given to nse web
+    If error, gets it from tradeplus (2 mins)
+    Arg: None
+    Returns: df_chains'''
+    if nseweb:
+        try:
+            df_chains = nse_chains()
+        except Exception as e:
+            df_chains = tp_chains()
+    else:
+        df_chains = tp_chains()
+                                
+    df_chains.to_pickle(fspath+'nse_chains.pkl') # write to pickle for size_chains to pickup
+        
     return df_chains
 
 #_____________________________________

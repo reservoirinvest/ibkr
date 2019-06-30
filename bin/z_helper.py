@@ -10,7 +10,7 @@ import csv
 import json
 import sys
 
-# import asyncio
+import asyncio
 # import aiohttp
 
 from ib_insync import *
@@ -52,10 +52,20 @@ def assign_var(market):
                else str(k+'='+str(v)) for k, v in varDict[market].items()]
     return varList
 
-# from json
-a = assign_var('nse')
-for v in a:
-    exec(v)
+#_____________________________________
+
+# init_variables.py
+def init_variables(market):
+    '''Initializes variables from json
+    Arg: (market) as string <'nse'> | <'snp'
+    Outputs: None. But sets the varables'''
+    
+    # from json
+    a = assign_var('common') + assign_var(market)
+    for v in a:
+        exec('global ' + v)
+        
+    return a
 
 #_____________________________________
 
@@ -117,11 +127,12 @@ def get_connected(market, trade_type):
 #_____________________________________
 
 # do_hist.py
-def do_hist(ib, undId):
+def do_hist(ib, undId, fspath):
     '''Historize ohlc
     Args:
         (ib) as connection object
         (undId) as contractId for underlying symbol in int
+        (fspath) as string with pathname for the OHLCs
     Returns:
         df_hist as dataframe with running standard deviation in stDev
         pickles the dataframe by symbol name
@@ -158,6 +169,7 @@ def fallrise(df_hist, dte):
         (dte) as int for days to expiry
     Returns:
         {dte: {'fall': fall, 'rise': rise}} as a dictionary of floats'''
+    s = df_hist.symbol.unique()[0]
     df = df_hist.set_index('date').sort_index(ascending = True)
     df = df.assign(delta = df.high.rolling(dte).max() - df.low.rolling(dte).min(), 
                         pctchange = df.close.pct_change(periods=dte))
@@ -166,7 +178,28 @@ def fallrise(df_hist, dte):
     max_fall = df1[df1.pctchange<=0].delta.max()
     max_rise = df1[df1.pctchange>0].delta.max()
     
-    return {dte: {'fall': max_fall, 'rise': max_rise}}
+    return (s, dte, max_fall, max_rise)
+
+#_____________________________________
+
+# getMarginAsync.py
+async def getMarginAsync(ib, c, o):
+    '''computes the margin
+    Args:
+        (ib) as connection object
+        (c) as a contract
+        (o) as an order
+    Returns:
+        {m}: dictionary of localSymbol: margin as float'''
+
+    try:
+        aw = await asyncio.wait_for(ib.whatIfOrderAsync(c, o), timeout=2) # waits for 2 seconds
+
+    except asyncio.TimeoutError: # fails the timeout
+        return {c.conId:np.nan} # appends a null for failed timeout
+
+    # success!
+    return {c.conId:aw}
 
 #_____________________________________
 

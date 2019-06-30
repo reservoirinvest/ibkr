@@ -1,0 +1,4 @@
+2019-06-27 21:08:39,738 ib_insync.wrapper INFO Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2019-06-27 21:11:01,840 ib_insync.ib INFO Disconnecting from 127.0.0.1:1300, 11.8 kB sent in 188 messages, 2.06 MB received in 623 messages, session time 144 s.
+2019-06-27 21:11:01,840 ib_insync.client INFO Disconnecting
+2019-06-27 21:11:01,857 ib_insync.client INFO Disconnected
