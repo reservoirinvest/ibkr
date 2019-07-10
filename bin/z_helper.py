@@ -52,6 +52,11 @@ def assign_var(market):
                else str(k+'='+str(v)) for k, v in varDict[market].items()]
     return varList
 
+# from json
+a = assign_var('common')
+for v in a:
+    exec(v)
+
 #_____________________________________
 
 # init_variables.py
@@ -63,7 +68,7 @@ def init_variables(market):
     # from json
     a = assign_var('common') + assign_var(market)
     for v in a:
-        exec('global ' + v)
+        exec(v)
         
     return a
 

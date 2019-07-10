@@ -12,7 +12,8 @@
         "minexpRom": 1.0,
         "nBand": 5,
 		"prec": 0.05,
-        "blacklist":["RCOM", "JETAIRWAY"]
+        "blacklist":["RCOM", "JETAIRWAY"],
+        "nse_assignment_limit": 1321000
     },
     "snp": {
         "callstdmult": 3,

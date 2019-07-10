@@ -100,7 +100,7 @@ def get_nse_chain(symbol: str, expiry: 'datetime64', undPrice: float, lot: int) 
     
     return chain
 
-def nse_chains():
+def chains_nse():
     '''Gets nse chains with symbols and lots from nse web
     Arg: None
     Returns: df_chains as dataframe of option chains'''
@@ -191,10 +191,10 @@ def tp_chains():
     scrips = list(df_tp.symbol)
     und_contracts = [Index(symbol=s, exchange=exchange) if s in ix_symbols else Stock(symbol=s, exchange=exchange) for s in scrips]
 
-    # log to nse_chains.log
-    with open(logpath+'nse_chains.log', 'w'):
+    # log to chains_nse.log
+    with open('chains_'+logpath+'.log', 'w'):
         pass # clear the run log
-    util.logToFile(logpath+'nse_chains.log')
+    util.logToFile('chains_'+logpath+'.log')
 
     # build the chains
     with get_connected('nse', 'live') as ib:
@@ -223,14 +223,14 @@ def get_chains(nseweb=True):
     Returns: df_chains'''
     if nseweb:
         try:
-            df_chains = nse_chains()
+            df_chains = chains_nse()
         except Exception as e:
             df_chains = tp_chains()
     else:
         df_chains = tp_chains()
                                 
-    df_chains.to_pickle(fspath+'nse_chains.pkl') # write to pickle for size_chains to pickup
-        
+    df_chains.to_pickle(fspath+'chains_nse.pkl') # write to pickle for size_chains to pickup
+
     return df_chains
 
 #_____________________________________

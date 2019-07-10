@@ -48,10 +48,10 @@ def get_chains(ib):
                 'lot': pd.Series(100, index=range(len(symbols)), dtype='int32')})
     und_contracts = [Stock(symbol=s, exchange=exchange, currency='USD') for s in symbols]
 
-    # log to snp_chains.log
-    with open(logpath+'snp_chains.log', 'w'):
+    # log to chains_snp.log
+    with open(logpath+'chains_snp.log', 'w'):
         pass # clear the run log
-    util.logToFile(logpath+'snp_chains.log')
+    util.logToFile(logpath+'chains_snp.log')
 
     # build the chains
     contracts=ib.qualifyContracts(*und_contracts)
@@ -70,7 +70,7 @@ def get_chains(ib):
 
     df_chains = df_chains.set_index('symbol').join(df_symlot.set_index('symbol')).drop_duplicates().reset_index()
     
-    df_chains.to_pickle(fspath+'snp_chains.pkl') # write to pickle for size_chains to pickup
+    df_chains.to_pickle(fspath+'chains.pkl') # write to pickle for size_chains to pickup
     
     return df_chains
 
