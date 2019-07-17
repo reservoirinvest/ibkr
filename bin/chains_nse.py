@@ -192,9 +192,9 @@ def tp_chains():
     und_contracts = [Index(symbol=s, exchange=exchange) if s in ix_symbols else Stock(symbol=s, exchange=exchange) for s in scrips]
 
     # log to chains_nse.log
-    with open('chains_'+logpath+'.log', 'w'):
+    with open(logpath+'_chains'+'.log', 'w'):
         pass # clear the run log
-    util.logToFile('chains_'+logpath+'.log')
+    util.logToFile(logpath+'_chains'+'.log')
 
     # build the chains
     with get_connected('nse', 'live') as ib:

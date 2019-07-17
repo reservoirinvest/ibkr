@@ -9,7 +9,7 @@
         "fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
         "maxdte": 60,
-        "minexpRom": 1.0,
+        "minexpRom": 0.75,
         "nBand": 5,
 		"prec": 0.05,
         "blacklist":["RCOM", "JETAIRWAY"],
@@ -25,6 +25,7 @@
         "minexpRom": 0.85,
         "nBand": 5,
 		"prec":0.01,
-        "blacklist":["VXX","P", "TSRO", "GOOGL"]       
+        "blacklist":["VXX","P", "TSRO", "GOOGL"],
+        "snp_assignment_limit": 70000        
     }
 }

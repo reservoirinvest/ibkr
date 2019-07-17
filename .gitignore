@@ -3,6 +3,7 @@
 zzJunk
 *.pkl
 *.xlsx
+*.csv
 
 
 # ignore sub-folders
