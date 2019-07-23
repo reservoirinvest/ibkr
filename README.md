@@ -1,64 +1,69 @@
-# Objective
+# Introduction
 
-* Have a framework for analysis and automation of trades in Interactive Brokers
+* This set of programs semi-automate trading with IBKR in two markets (US and India)
 
-# Goals
-1) The framework should be able to:
-* Scan - build the target scrips, extract underlyings, extract options and pickle
-* Manage 
-    * manual - decide the _strategy_, close (harvest) trades, open (sow) new trades
-    * auto - high frequency automatic trading with error management and exception management
-* Analyze - visual tool to quickly assemble data for analysis and decision making
+# Pre-requisites
 
-2) Use best programming best practice
-    * use native IBKR information, with no/little dependancies from external sites/sources
+The programs require the following environment set up 
+ - for [python](https://www.python.org/downloads/)
+ - using [Jupyter Notebook](http://jupyter.org/install) as IDE
+ - to run [IBKR TWS API]( https://interactivebrokers.github.io/) in C:\ root for Windows
+ - on [TWS](https://www.interactivebrokers.com.hk/en/index.php?f=16042) or [IB Gateway](https://www.interactivebrokers.com.hk/en/index.php?f=16457)
+ - with [IB_insync](https://rawgit.com/erdewit/ib_insync/master/docs/html/readme.html#) library
+ - backed up into [git](https://git-scm.com/downloads)
+ 
+ **Note:** The instructions are for Windows 10. The same process can be used for other OS - such as Ubuntu and MacOS.
+ 
+## Setup
 
-3) Have technical capability to do everything in a cloud infrastructure, with monitoring on smart phone
+* This section is borrowed from [ib_insync](https://rawgit.com/erdewit/ib_insync/master/docs/html/readme.html)
 
-# Strategy
-## Closing
-1) Dyamically determine the closing price percentage for short options based on dte
-2) Determine harvest price from minimum of determined closing price and marketprice
+  1. Install [python](https://www.python.org/downloads/) latest release (3.7.x at the time of this writing)
+  
+  
+  2. Install ib_insyc with the command: 
+  > *pip3 install -U ib_insync*
+  
+  
+  3. Install [Interactive Brokers Python API](http://interactivebrokers.github.io/) - latest version
+     * IBKR's TWS API should be in the root folder. This needs to be shared between Python and Jupyter.
+    
+    
+  4. Install jupyter+numpy+pandas with the command:
+  > *pip3 install -U jupyter numpy pandas*
+  
+     for re-installing / upgrade the command is:
+  > *pip3 install --force-reinstall --upgrade jupyter*
+      
+      
+  5. To get Jupyter recognize TWS API, go to the *C:\TWS API\source\pythonclient* folder and run *python setup.py install*
+    
+    
+  6. Set the API for TWS / IB Gateway to the appropriate _Socket Port_
+    * For our example we will use IB Gateway's paper trading account with a Socket Port of 4002
+    
+  
+  7. Make a project folder and set up [Git](http://rogerdudler.github.io/git-guide/)
+  
+# Structure
 
-## Opening
-### Puts
+## Main programs
 
+The main programs are stored in the bin sub-directory
 
-# Markets
-* nse - for India
-* snp - for US
-
-# NSE
-
-## 01_nse_scan
-
-* Extract symbols and margins from (5paisa)[https://www.5paisa.com/5pit/spma.asp]
-* Translates to IBKR symbols
-* Gets put price, call price and delta from Black-Scholes 
-* Prepares to *pickle* 
-   * Underlying symbols dictionary with:
-      * volatility, hi52, lo52, average, dividend
-      * integrated with lots and margins
-      * pickles them to *\_symbol.pkl* file
-   * Option chains dataframe with:
-      * option chain tickers (with expiries and strikes that fall in 2 std deviation from underlying)
-      * option greeks (black-scholes delta for probability-of-profit *pop*)
-      * expected price (adjusted for premiums / penalties and base decimals)
-      * margins (for return-on-margin *rom*)
-      * pickles the dataframe to *symbol.pkl* file
-* Adjusts days-to-expire for last day option expiries
-   
-## 02_nse_manage
-
-* Reads the account summary
-* _Harvests_ open option positions from a linest curve
-* Prepares to _Sow_
-   * Checks available funds
-   * Makes a *blacklist* (existing positions which have run over position limit)
-   * Focuses on Puts
-      * with Strikes above the mean
-   * Filters based on expected rom
-   * Checks consumption of funds
- * Places **Harvests** (closing trades) and **Sows** (Opening Trades)
- * Records the harvests and sows
-   
+Program files have been structured on the following lines with some alphabetical significance:
+ - 0main   - the main program
+ - chains  - get the option chains
+ - ohlcs   - get the open, high, low, close history for 365 days
+ - sized   - size the chains to standard deviation rule for puts (little lenient) and calls (strict)
+ - target  - make target deals with expected price for shorting options
+ - workout - for closing the trades filled based on a 'harvest' price that parabollically reduces based on days-to-expiry
+ 
+# Helper programs
+ - z_helper - which has common utilities across all markets
+ - jup2py - a script to be run in Jupyter that converts jupyter .ipynb files to .py files
+ 
+# JSON
+ - variables.json - containing limits (like minimum expected return-on-margin, paths, standard deviation limits, etc.)
+ 
+ 

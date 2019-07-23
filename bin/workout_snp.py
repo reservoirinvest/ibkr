@@ -40,7 +40,7 @@ def workout_snp(ib):
     pos_opt_df = pos_opt_df.assign(dte=pos_opt_df.expiry.apply(get_dte))
 
     # take maximum of precision and minimum of hvstPrice, avgCost
-    pos_opt_df = pos_opt_df.assign(hvstPrice=np.maximum(np.minimum((pos_opt_df.dte.apply(hvstPricePct)*pos_opt_df.avgCost).apply(lambda x: get_prec(x, 0.05)), pos_opt_df.close), prec))
+    pos_opt_df = pos_opt_df.assign(hvstPrice=np.maximum(np.minimum((pos_opt_df.dte.apply(hvstPricePct)*pos_opt_df.avgCost/100).apply(lambda x: get_prec(x, prec)), pos_opt_df.close), prec))
 
     if trades:
         trades_df = util.df(t.contract for t in trades).join(util.df(t.order for t in trades)).join(util.df(t.orderStatus for t in trades), lsuffix='_')

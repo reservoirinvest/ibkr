@@ -155,9 +155,9 @@ def sized_snp(ib, df_chains, df_ohlcs):
     df_opt = grp_opts(df_opt.assign(rom=df_opt.close/df_opt.margin*365/df_opt.dte*df_opt.lot))
 
     df_opt.to_pickle(fspath+'sized_snp.pkl')
-    df_optg = grp_opts(df_opt).to_excel(fspath+'sized_snp.xlsx', index=False, freeze_panes=(1,2))
+    grp_opts(df_opt).to_excel(fspath+'sized_snp.xlsx', index=False, freeze_panes=(1,2))
     
-    return df_optg
+    return df_opt
 
 #_____________________________________
 

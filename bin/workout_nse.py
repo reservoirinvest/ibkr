@@ -48,8 +48,8 @@ def workout_nse(ib):
         trades_cols = ['conId', 'symbol', 'localSymbol', 'secType', 'expiry', 'strike', 'right', 'undPrice', 'sd', 
                        'rom', 'action', 'status']
 
-    # join with other parameters in sized.pkl
-    trades_df = trades_df.set_index('conId').join(pd.read_pickle(fspath+'sized.pkl')[['optId', 'close', 'undPrice', 'rom', 'stDev']].set_index('optId'), lsuffix='_').rename_axis('conId').reset_index()
+    # join with other parameters in sized_nse.pkl
+    trades_df = trades_df.set_index('conId').join(pd.read_pickle(fspath+'sized_nse.pkl')[['optId', 'close', 'undPrice', 'rom', 'stDev']].set_index('optId'), lsuffix='_').rename_axis('conId').reset_index()
     trades_df = trades_df.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis=1)
     trades_df = trades_df.assign(sd=abs(trades_df.strike-trades_df.undPrice)/trades_df.stDev)
 

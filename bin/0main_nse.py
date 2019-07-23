@@ -96,7 +96,7 @@ def buys(ib):
     '''Prepares BUY trade blocks for those without close trades.
     Can be used dynamically.
     Args:  (ib) as connection object
-    Dependancy: sized.pkl for other parameters
+    Dependancy: sized_nse.pkl for other parameters
     Returns: (buy_tb) as BUY trade blocks'''
 
     df_buy = workout_nse(ib)
@@ -227,7 +227,7 @@ if __name__=='__main__':
             print("Preparing targets\n")
             df_chains = pd.read_pickle(fspath+'chains_nse.pkl')
             df_ohlcs = pd.read_pickle(fspath+'ohlcs.pkl')
-            df_sized = pd.read_pickle(fspath+'sized.pkl')
+            df_sized = pd.read_pickle(fspath+'sized_nse.pkl')
             df_targets = target_nse(ib, df_sized, blacklist)
             print(f"\nMade SELL targets in {codetime(time.time()-start)}\n")
             
@@ -236,7 +236,7 @@ if __name__=='__main__':
             print("Trading in the morning\n")
             df_chains = pd.read_pickle(fspath+'chains_nse.pkl')
             df_ohlcs = pd.read_pickle(fspath+'ohlcs.pkl')
-            df_sized = pd.read_pickle(fspath+'sized.pkl')            
+            df_sized = pd.read_pickle(fspath+'sized_nse.pkl')            
             df_targets = pd.read_pickle(fspath+'targets.pkl')
             sell_tb = sells(ib, df_targets)
             buy_tb = buys(ib)
