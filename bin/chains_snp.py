@@ -70,7 +70,7 @@ def get_chains(ib):
 
     df_chains = df_chains.set_index('symbol').join(df_symlot.set_index('symbol')).drop_duplicates().reset_index()
     
-    df_chains.to_pickle(fspath+'chains.pkl') # write to pickle for size_chains to pickup
+    df_chains.to_pickle(fspath+'chains_snp.pkl') # write to pickle for size_chains to pickup
     
     return df_chains
 

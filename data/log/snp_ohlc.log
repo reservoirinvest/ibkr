@@ -1,4 +1,0 @@
-2019-07-17 06:14:26,788 ib_insync.wrapper INFO updatePortfolio: PortfolioItem(contract=Stock(conId=366239371, symbol='CTVA', right='0', primaryExchange='NYSE', currency='USD', localSymbol='CTVA', tradingClass='CTVA'), position=66.0, marketPrice=27.87000085, marketValue=1839.42, averageCost=24.84389545, unrealizedPNL=199.72, realizedPNL=0.0, account='U8898867')
-2019-07-17 06:15:46,850 ib_insync.ib INFO Disconnecting from 127.0.0.1:1300, 11.8 kB sent in 189 messages, 2.06 MB received in 686 messages, session time 198 s.
-2019-07-17 06:15:46,850 ib_insync.client INFO Disconnecting
-2019-07-17 06:15:46,867 ib_insync.client INFO Disconnected

@@ -1,4 +1,11 @@
 # imports_headers.py
+
+"""Common helper programs
+Date: 23-July-2019
+Ver: 1.0
+Time taken: milliseconds to load
+"""
+
 import pandas as pd
 import numpy as np
 import requests
@@ -11,13 +18,12 @@ import json
 import sys
 
 import asyncio
-# import aiohttp
 
 from ib_insync import *
 
 from io import StringIO
 from itertools import product, repeat
-from os import listdir, path
+from os import listdir, path, unlink
 from bs4 import BeautifulSoup
 from tqdm import tqdm, tnrange
 
@@ -265,19 +271,20 @@ def hvstPricePct(dte):
 #_____________________________________
 
 # trade_blocks.py
-def trade_blocks(ib, df, exchange):
+def trade_blocks(ib, df, action, exchange):
     '''Makes SELL contract blocks for trades
     Args:
        (ib) as connection object
        (df) as the target df for setting up the trades
+       (action) = <'BUY'> | <'SELL'>
        (exchange) as the market <'NSE'|'SMART'>
     Returns:
        (coblks) as contract blocks'''
     
     if exchange == 'NSE':
-        sell_orders = [LimitOrder(action='SELL', totalQuantity=q*l, lmtPrice=expPrice) for q, l, expPrice in zip(df.qty, df.lot, df.expPrice)]
+        sell_orders = [LimitOrder(action=action, totalQuantity=q*l, lmtPrice=expPrice) for q, l, expPrice in zip(df.qty, df.lot, df.expPrice)]
     elif exchange == 'SMART':
-        sell_orders = [LimitOrder(action='SELL', totalQuantity=q, lmtPrice=expPrice) for q, expPrice in zip(df.qty, df.expPrice)]
+        sell_orders = [LimitOrder(action=action, totalQuantity=q, lmtPrice=expPrice) for q, expPrice in zip(df.qty, df.expPrice)]
     # get the contracts
     cs=[Contract(conId=c) for c in df.optId]
 
@@ -373,6 +380,19 @@ def closest_margin(ib, df_opt, exchange):
     df_opt = df_opt.assign(undMargin=margin, xStrike=ocm[0].strike)
     
     return df_opt
+
+#_____________________________________
+
+# codetime.py
+def codetime(seconds):
+    '''get a printable hh:mm:ss time of elapsed program
+    Arg: (seconds) as float
+    Returns: hh:mm:ss as string'''
+    
+    m, s = divmod(seconds,60)
+    h, m = divmod(m, 60)
+    
+    return '{:d}:{:02d}:{:02d}'.format(int(h), int(m), int(s))
 
 #_____________________________________
 

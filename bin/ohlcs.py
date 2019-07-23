@@ -1,10 +1,8 @@
 # ohlcs.py
-"""Program that generates ohlcs
+"""Program that generates ohlcs (both NSE and SNP)
 Date: 23-June-2019
 Ver: 1.0
-Time taken: 
- - all from IBKR: 8 mins
- - from NSE Web:
+Time taken: 12 mins
 """
 from z_helper import *  # needed for util
 
