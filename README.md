@@ -1,8 +1,11 @@
 # Introduction
 
-* This set of programs semi-automated trading with IBKR in two markets (US and India)
+* This set of programs do semi-automated trading with IBKR in two markets
+ - USA (SNP)
+ - India (NSE)
 
 # Concept and Structure
+The overall concept and structure is as below:
 ![Alt structure](./pic/structure.svg?sanitize=true "Overall Structure")
 
 # Pre-requisites
@@ -50,7 +53,7 @@ The programs require the following environment set up
   
 # Programs
 
-Programs are stored in the bin sub-directory
+Programs are stored in the _bin_ sub-directory
 
 ## Market-specific programs
 
