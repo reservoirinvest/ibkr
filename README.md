@@ -3,7 +3,8 @@
 * This set of programs semi-automate trading with IBKR in two markets (US and India)
 
 # Concept
-![Structure](./pic/program.svg?sanitize=true "Structure)
+![Alt text](./pic/program.svg?sanitize=true "Structure)
+<img src="./pic/program.svg">
 
 # Pre-requisites
 
