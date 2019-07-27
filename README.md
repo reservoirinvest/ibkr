@@ -4,7 +4,6 @@
 
 # Concept
 ![Alt text](./pic/program.svg?sanitize=true "Structure")
-<img src="./pic/program.svg">
 
 # Pre-requisites
 
