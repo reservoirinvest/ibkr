@@ -4,6 +4,8 @@
         "nlv_pct_limit": 0.8
     },
     "nse": {
+        "LIVE": 3000,
+        "PAPER": 3001,
         "callstdmult": 3,
 		"putstdmult": 2,		
         "exchange": "NSE",
@@ -18,6 +20,8 @@
         "cap_blacklist": ["ASHOKLEY", "BHARATFORG", "GRASIM", "PETRONET", "SUNTV", "ICICIPRULI", "ARVIND", "BSOFT", "ENGINERSIN", "TATAELXSI", "EICHERMOT", "MOTHERSUMI", "TVSMOTOR", "BANKINDIA", "CADILAHC", "IBULHSGFIN", "PAGEIND", "SAIL", "UNIONBANK"]
     },
     "snp": {
+        "LIVE": 1300,
+        "PAPER": 1301,
         "callstdmult": 3,
 		"putstdmult": 2,
         "exchange": "SMART",

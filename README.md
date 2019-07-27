@@ -1,9 +1,9 @@
 # Introduction
 
-* This set of programs semi-automate trading with IBKR in two markets (US and India)
+* This set of programs semi-automated trading with IBKR in two markets (US and India)
 
-# Concept
-![Alt text](./pic/program.svg?sanitize=true "Structure")
+# Concept and Structure
+![Alt structure](./pic/structure.svg?sanitize=true "Overall Structure")
 
 # Pre-requisites
 
@@ -43,30 +43,32 @@ The programs require the following environment set up
     
     
   6. Set the API for TWS / IB Gateway to the appropriate _Socket Port_
-    * For our example we will use IB Gateway's paper trading account with a Socket Port of 4002
+     * For our example we will use IB Gateway's paper trading account with a Socket Port of 4002
     
   
   7. Make a project folder and set up [Git](http://rogerdudler.github.io/git-guide/)
   
-# Structure
+# Programs
 
-## Main programs
+Programs are stored in the bin sub-directory
 
-The main programs are stored in the bin sub-directory
+## Market-specific programs
 
-Program files have been structured on the following lines with some alphabetical significance:
+Market specific program files have been structured on the following lines with some alphabetical significance:
  - 0main   - the main program
  - chains  - get the option chains
  - ohlcs   - get the open, high, low, close history for 365 days
- - sized   - size the chains to standard deviation rule for puts (little lenient) and calls (strict)
+ - sized   - size the chains to standard deviation rule for writing puts (little lenient) and calls (strict)
  - target  - make target deals with expected price for shorting options
  - workout - for closing the trades filled based on a 'harvest' price that parabollically reduces based on days-to-expiry
  
-# Helper programs
+## Helper programs
  - z_helper - which has common utilities across all markets
  - jup2py - a script to be run in Jupyter that converts jupyter .ipynb files to .py files
  
-# JSON
+## JSON
+
+A JSON file has been created to allow interactivity (e.g. throug a GUI) and control. There is currently just one file:
  - variables.json - containing limits (like minimum expected return-on-margin, paths, standard deviation limits, etc.)
  
  
