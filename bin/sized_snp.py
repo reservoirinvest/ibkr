@@ -35,6 +35,9 @@ def sized_snp(ib, df_chains, df_ohlcs):
     # get dte and remove those greater than maxdte
     df_chains = df_chains.assign(dte=df_chains.expiry.apply(get_dte))                    
     df_chains = df_chains[df_chains.dte <= maxdte]
+    
+    # replace dte with 1 for dte <= 0
+    df_chains.loc[df_chains.dte <=0,  'dte'] = 1
 
     # generate std dataframe
     df = df_ohlcs[['symbol', 'stDev']]  # lookup dataframe
@@ -50,9 +53,9 @@ def sized_snp(ib, df_chains, df_ohlcs):
     df_chainstd = df_chains.set_index(['symbol', 'dte']).join(df_std).reset_index()
 
     und_contracts = [Stock(symbol, exchange=exchange, currency='USD') for symbol in df_chainstd.symbol.unique()]
-    with get_connected('snp', 'live') as ib:
-        und_quals = ib.qualifyContracts(*und_contracts)
-        tickers = ib.reqTickers(*und_quals)
+#     with get_connected('snp', 'live') as ib:
+    und_quals = ib.qualifyContracts(*und_contracts)
+    tickers = ib.reqTickers(*und_quals)
 
     uprice_dict = {u.contract.conId: u.marketPrice() for u in tickers}
 
@@ -101,9 +104,9 @@ def sized_snp(ib, df_chains, df_ohlcs):
     # util.logToFile(logpath+'test.log') # prevents unknown contract errors in console
 
     opt_contracts = []
-    with get_connected('snp', 'live') as ib:
-        print(f"\nQualifying {len(opt_list)} option contracts ...\n")
-        opt_contracts = ib.qualifyContracts(*opt_list)
+#     with get_connected('snp', 'live') as ib:
+    print(f"\nQualifying {len(opt_list)} option contracts ...\n")
+    opt_contracts = ib.qualifyContracts(*opt_list)
 
     # integrate optId with df_opt and remove df_opt without optId
     dfq = util.df(opt_contracts).iloc[:, 1:6]
@@ -113,8 +116,8 @@ def sized_snp(ib, df_chains, df_ohlcs):
     df_opt = df_opt.assign(optId=df_opt.optId.astype('int'))
 
     # get the option prices
-    with get_connected('snp', 'live') as ib:
-        ticker = ib.reqTickers(*opt_contracts)
+#     with get_connected('snp', 'live') as ib:
+    ticker = ib.reqTickers(*opt_contracts)
 
     df_prices = pd.DataFrame({t.contract.conId: {'bid':t.bid, 'ask':t.ask, 'close':t.close} for t in ticker}).T
 
@@ -131,19 +134,19 @@ def sized_snp(ib, df_chains, df_ohlcs):
 
     m = {} # empty dictionary to collect outputs of getMarginAsync
 
-    with get_connected('snp', 'live') as ib:
-        async def coro(coblk):
-            with tqdm(total=len(coblk), file=sys.stdout, unit=' symexpiry') as tqm:
-                for c, o in coblk:
-                    tqm.set_description(f"IBKR margins for  {c.localSymbol.ljust(22)}")
-                    m.update(await getMarginAsync(ib, c, o))
-                    tqm.update(1)
-                return m
+#     with get_connected('snp', 'live') as ib:
+    async def coro(coblk):
+        with tqdm(total=len(coblk), file=sys.stdout, unit=' symexpiry') as tqm:
+            for c, o in coblk:
+                tqm.set_description(f"IBKR margins for  {c.localSymbol.ljust(22)}")
+                m.update(await getMarginAsync(ib, c, o))
+                tqm.update(1)
+            return m
 
     # run co-routines to get the margins        
     for coblk in coblks:
-        with get_connected('snp', 'live') as ib:
-            asyncio.run(coro(coblk))
+#         with get_connected('snp', 'live') as ib:
+        asyncio.run(coro(coblk))
 
     # put margins to df_opt
     m_dict = {i: float(j.initMarginChange) for i, j in {k: v for k, v in m.items() if v}.items() if str(j) != 'nan'}

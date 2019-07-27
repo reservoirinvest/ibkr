@@ -39,7 +39,7 @@ def target_snp(ib, df_sized, blacklist):
 
     # get the options
 #     df_opt = pd.read_pickle(fspath+'sized_snp.pkl')
-    df_opt = df_sized.assign(und_remq=(snp_assignment_limit/(df_opt.lot*df_opt.undPrice)).astype('int')) # remaining quantities in entire snp
+    df_opt = df_sized.assign(und_remq=(snp_assignment_limit/(df_sized.lot*df_sized.undPrice)).astype('int')) # remaining quantities in entire snp
 
     # remove nan in margins and close prices. These could be dead ones.
     df_opt = df_opt[~df_opt.margin.isnull()].reset_index(drop=True)

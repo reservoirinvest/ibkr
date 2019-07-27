@@ -2,6 +2,9 @@
 
 * This set of programs semi-automate trading with IBKR in two markets (US and India)
 
+# Concept
+![Structure](./pic/program.svg "Structure)
+
 # Pre-requisites
 
 The programs require the following environment set up 

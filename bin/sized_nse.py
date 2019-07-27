@@ -35,6 +35,9 @@ def sized_nse(ib, df_chains, df_ohlcs):
     # get dte and remove those greater than maxdte
     df_chains = df_chains.assign(dte=df_chains.expiry.apply(get_dte))                    
     df_chains = df_chains[df_chains.dte <= maxdte]
+    
+    # replace dte with 1 for dte <= 0
+    df_chains.loc[df_chains.dte <=0,  'dte'] = 1
 
     # generate std dataframe
     df = df_ohlcs[['symbol', 'stDev']]  # lookup dataframe

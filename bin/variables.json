@@ -1,29 +1,30 @@
 {
     "common": {
-        "blk": 50
+        "blk": 50,
+        "nlv_pct_limit": 0.8
     },
     "nse": {
         "callstdmult": 3,
-		"putstdmult": 2.5,		
+		"putstdmult": 2,		
         "exchange": "NSE",
         "fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
         "maxdte": 60,
-        "minexpRom": 0.7,
+        "minexpRom": 0.75,
         "nBand": 5,
 		"prec": 0.05,
         "blacklist":["RCOM", "JETAIRWAY"],
         "nse_assignment_limit": 1321000,
-        "cap_blacklist": ["ASHOKLEY",  "BHARATFORG",  "GRASIM",  "PETRONET",  "SUNTV",  "ICICIPRULI",  "ARVIND",  "BSOFT",  "ENGINERSIN",  "TATAELXSI",  "EICHERMOT",  "MOTHERSUMI",  "TVSMOTOR"]
+        "cap_blacklist": ["ASHOKLEY", "BHARATFORG", "GRASIM", "PETRONET", "SUNTV", "ICICIPRULI", "ARVIND", "BSOFT", "ENGINERSIN", "TATAELXSI", "EICHERMOT", "MOTHERSUMI", "TVSMOTOR", "BANKINDIA", "CADILAHC", "IBULHSGFIN", "PAGEIND", "SAIL", "UNIONBANK"]
     },
     "snp": {
-        "callstdmult": 2.8,
-		"putstdmult": 1.8,
+        "callstdmult": 3,
+		"putstdmult": 2,
         "exchange": "SMART",
         "fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
         "maxdte": 60,
-        "minexpRom": 0.7,
+        "minexpRom": 0.75,
         "minexpOptPrice": 0.1,
         "nBand": 5,
 		"prec":0.01,

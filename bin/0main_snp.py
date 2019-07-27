@@ -147,7 +147,7 @@ def do_all(ib):
     print("Deleted all data and log files\n")
     
     # do all the functions
-    df_chains=get_chains(snpweb=False)
+    df_chains=get_chains(ib)
     print("Got the chains\n")
     
     df_ohlcs=make_ohlcs(ib, df_chains)
@@ -188,7 +188,7 @@ if __name__=='__main__':
         elif userip == 1: # Chain Generation
             start = time.time()
             print("\nGetting Chains\n")
-            df_chains=get_chains(snpweb=False)
+            df_chains=get_chains(ib)
             print(f"\nGot option chains in {codetime(time.time()-start)}\n")
             
         elif userip == 2: # OHLC Generation
