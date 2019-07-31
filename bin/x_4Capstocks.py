@@ -65,10 +65,11 @@ def capstocks(cap_blacklist):
 
     # Get the multiple of lots to be bought
     df6 = df5.assign(mult=df5.variable.str[-1:].astype('int32'))
-
-    df7=df6.assign(qty=(df6.lot/df6.mult/2).astype('int').apply(lambda x: int(10 * round(float(x)/10))), trade='BUY')
     
-    df7.loc[df7.lot <= 30, 'qty'] = 2 # Make the quantity to be 3 for very high margin symbols [EICHERMOT, PAGEIND]
+    # Divide the multiple to appropriately adjust to remaining balance in YesBank NRE
+    df7=df6.assign(qty=(df6.lot/df6.mult/capstocksmult).astype('int').apply(lambda x: int(10 * round(float(x)/10))), trade='BUY')
+    
+    df7.loc[df7.lot <= 30, 'qty'] = 1 # Make the quantity to be 3 for very high margin symbols [EICHERMOT, PAGEIND]
 
     df7 = df7.sort_values(['symbol', 'LimitPrice'], ascending=[True, False])
 

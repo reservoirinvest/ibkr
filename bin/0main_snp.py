@@ -98,8 +98,11 @@ def buys(ib):
     Returns: (buy_tb) as BUY trade blocks'''
 
     df_buy = workout_snp(ib)
-    buy_tb = trade_blocks(ib=ib, df=df_buy, action='BUY', exchange=exchange)
     
+    if not df_buy.empty: # if there is some contract to close
+        buy_tb = trade_blocks(ib=ib, df=df_buy, action='BUY', exchange=exchange)
+    else:
+        buy_tb = None
     return buy_tb
 
 # place trades
@@ -129,7 +132,8 @@ def place_morning_trades(ib, buy_tb, sell_tb):
                 print("\nSorry, I didn't understand what you entered. Try again or close window!\n")
                 continue # Loop again
             
-    buy_trades = doTrades(ib, buy_tb)
+    if buy_tb: # there is something to buy!
+        buy_trades = doTrades(ib, buy_tb)
     sell_trades = doTrades(ib, sell_tb)
     
     print("\nMorning trades completed!\n")

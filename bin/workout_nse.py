@@ -26,6 +26,9 @@ def workout_nse(ib):
     pos_contracts = ib.qualifyContracts(*[Contract(conId=c) for c in [p.contract.conId for p in pos]])
     pos_tickers = ib.reqTickers(*pos_contracts)
     pos_prices = {t.contract.conId: t.marketPrice() for t in pos_tickers}
+    
+    if not pos:  # There is no position!
+        return None # Just exit the function
 
     #... position dataframe
     pos_cols = ['conId', 'symbol', 'localSymbol', 'secType', 'lastTradeDateOrContractMonth', 'strike', 'right']

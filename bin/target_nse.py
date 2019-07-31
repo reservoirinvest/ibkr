@@ -22,17 +22,17 @@ def target_nse(ib, df_sized, blacklist):
         tb: trade blocks and pickles into targets.pickle
     '''
     
-    # from portfolio
-    #_______________
-#     with get_connected('nse', 'live') as ib:
+# from portfolio
+#_______________
+# with get_connected('nse', 'live') as ib:
     p = util.df(ib.portfolio()) # portfolio table
 
     # extract option contract info from portfolio table
-    dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
-    dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
-
-    # get the total position
-    dfp1 = dfp.groupby('symbol').sum()['position']
+    if p is not None:  # there are some contracts in the portfolio
+        dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
+        dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+        # get the total position
+        dfp1 = dfp.groupby('symbol').sum()['position']
 
     # from options pickle
     #____________________
@@ -63,11 +63,14 @@ def target_nse(ib, df_sized, blacklist):
     # filter based on remaining quantity
     #___________________________________
 
-    # compute the remaining quantities
-    df_opt1 = df_opt.groupby('symbol').first()[['lot', 'margin', 'und_remq']]
+    if p is not None:  # there are some contracts in the portfolio
+        # compute the remaining quantities
+        df_opt1 = df_opt.groupby('symbol').first()[['lot', 'margin', 'und_remq']]
 
-    df_opt2 = df_opt1.join(dfp1).fillna(0).astype('int')
-    df_opt2 = df_opt2.assign(remqty=df_opt2.und_remq+(df_opt2.position/df_opt2.lot).astype('int'))
+        df_opt2 = df_opt1.join(dfp1).fillna(0).astype('int')
+        df_opt2 = df_opt2.assign(remqty=df_opt2.und_remq+(df_opt2.position/df_opt2.lot).astype('int'))
+    else:
+        df_opt2 = df_opt.assign(remqty=df_opt.und_remq)
 
     dfrq = df_opt2[['remqty']]
 

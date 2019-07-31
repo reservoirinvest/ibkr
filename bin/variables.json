@@ -17,12 +17,13 @@
 		"prec": 0.05,
         "blacklist":["RCOM", "JETAIRWAY"],
         "nse_assignment_limit": 1321000,
-        "cap_blacklist": ["ASHOKLEY", "BHARATFORG", "GRASIM", "PETRONET", "SUNTV", "ICICIPRULI", "ARVIND", "BSOFT", "ENGINERSIN", "TATAELXSI", "EICHERMOT", "MOTHERSUMI", "TVSMOTOR", "BANKINDIA", "CADILAHC", "IBULHSGFIN", "PAGEIND", "SAIL", "UNIONBANK"]
+        "capstocksmult": 5,
+        "cap_blacklist": ["GRASIM", "TATAELXSI", "ICICIPRULI", "PETRONET", "SUNTV", "BHARATFORG", "NBCC", "BSOFT"]
     },
     "snp": {
         "LIVE": 1300,
         "PAPER": 1301,
-        "callstdmult": 3,
+        "callstdmult": 5,
 		"putstdmult": 2,
         "exchange": "SMART",
         "fspath": "../data/snp/",
