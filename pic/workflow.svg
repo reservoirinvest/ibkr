@@ -1,0 +1,21 @@
+<svg width="580" height="400" xmlns="http://www.w3.org/2000/svg">
+ <!-- Created with Method Draw - http://github.com/duopixel/Method-Draw/ -->
+ <g>
+  <title>background</title>
+  <rect height="402" width="582" y="-1" x="-1" fill="#fff" id="canvas_background"/>
+  <g y="0" x="0" height="100%" width="100%" display="none" overflow="visible" id="canvasGrid">
+   <rect height="100%" width="100%" y="0" x="0" stroke-width="0" fill="url(#gridpattern)"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <text xml:space="preserve" y="29.27" x="241.5" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="24px" font-family="Helvetica,Arial,sans-serif" id="svg_1">Workflow</text>
+  <text xml:space="preserve" y="296.27" x="61.5" transform="matrix(1, 0, 0, 1, 0, 0)" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="12px" font-family="Helvetica,Arial,sans-serif" id="svg_2">MA200 is nearly flat or positive sloping</text>
+  <text xml:space="preserve" y="79.27" x="61.5" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="16px" font-family="Helvetica,Arial,sans-serif" id="svg_3">Generate chains</text>
+  <text xml:space="preserve" y="147.27" x="61.5" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="16px" font-family="Helvetica,Arial,sans-serif" id="svg_4">Generate ohlcs</text>
+  <text xml:space="preserve" y="239.27" x="61.5" transform="matrix(1, 0, 0, 1, 0, 0)" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="14px" font-family="Helvetica,Arial,sans-serif" id="svg_5">(NIFTY50 or SPY ETF)</text>
+  <text xml:space="preserve" y="257.27" x="61.5" transform="matrix(1, 0, 0, 1, 0, 0)" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="12px" font-family="Helvetica,Arial,sans-serif" id="svg_6">SMA50 &gt; SMA200</text>
+  <text xml:space="preserve" y="276.27" x="61.5" transform="matrix(1, 0, 0, 1, 0, 0)" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="12px" font-family="Helvetica,Arial,sans-serif" id="svg_7">MA50 has positive slope</text>
+  <text xml:space="preserve" y="217.27" x="61.5" transform="matrix(1, 0, 0, 1, 0, 0)" text-anchor="start" stroke-width="0" stroke="#000" fill="#000000" style="cursor: move; pointer-events: inherit;" font-size="16px" font-family="Helvetica,Arial,sans-serif" id="svg_8">Find if Bull or Bear market</text>
+ </g>
+</svg>

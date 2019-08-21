@@ -33,6 +33,9 @@ def ohlcs(ib, id_sym, fspath, logpath):
     
     df_ohlcs = pd.concat(li).reset_index(drop=True)
     
+    # remove unnecessary columns
+    df_ohlcs=df_ohlcs.drop(['barCount', 'average'], 1)
+    
     return df_ohlcs
 
 #_____________________________________

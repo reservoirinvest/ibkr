@@ -1,0 +1,39 @@
+{
+    "common": {
+        "blk": 50,
+        "nlv_pct_limit": 0.8
+    },
+    "nse": {
+        "LIVE": 3000,
+        "PAPER": 3001,
+        "callstdmult": 2.8,
+		"putstdmult": 1.8,		
+        "exchange": "NSE",
+        "fspath": "../data/nse/",
+		"logpath": "../data/log/nse_",
+        "maxdte": 60,
+        "minexpRom": 0.6,
+        "nBand": 5,
+		"prec": 0.05,
+        "blacklist":["RCOM", "JETAIRWAY"],
+        "nse_assignment_limit": 1321000,
+        "capstocksmult": 5,
+        "cap_blacklist": ["TATAELXSI", "GRASIM", "SUNTV", "BHARATFORG", "ICICIPRULI", "PETRONET", "NBCC", "BSOFT", "ASHOKLEY", "UNIONBANK", "TVSMOTOR"]
+    },
+    "snp": {
+        "LIVE": 1300,
+        "PAPER": 1301,
+        "callstdmult": 5,
+		"putstdmult": 2,
+        "exchange": "SMART",
+        "fspath": "../data/snp/",
+		"logpath": "../data/log/snp_",
+        "maxdte": 60,
+        "minexpRom": 0.75,
+        "minexpOptPrice": 0.1,
+        "nBand": 5,
+		"prec":0.01,
+        "blacklist":["VXX","P", "TSRO", "GOOGL"],
+        "snp_assignment_limit": 70000        
+    }
+}

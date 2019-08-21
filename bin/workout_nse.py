@@ -71,6 +71,13 @@ def workout_nse(ib):
     pos_buy_df = pos_buy_df.assign(lot=pos_buy_df.position.apply(abs), qty=1, expPrice=pos_buy_df.hvstPrice)
     pos_buy_df.rename(columns={'conId': 'optId'}, inplace=True)
     
+    # make the buy back expPrice slightly lesser for those whose close price == buyback expPrice
+    mask = (pos_buy_df.expPrice == pos_buy_df.close) & (pos_buy_df.expPrice > 0.05)
+    pos_buy_df.loc[mask, 'expPrice'] = pos_buy_df[mask].expPrice-0.05
+
+    # make the expPrice to the correct precision - else trades will fail
+    pos_buy_df = pos_buy_df.assign(expPrice=pos_buy_df.expPrice.apply(lambda x: get_prec(x, prec)))    
+    
     return pos_buy_df
 
 #_____________________________________

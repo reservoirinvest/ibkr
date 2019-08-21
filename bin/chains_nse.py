@@ -229,7 +229,7 @@ def get_chains(nseweb=True):
     else:
         df_chains = tp_chains()
                                 
-    df_chains.to_pickle(fspath+'chains_nse.pkl') # write to pickle for size_chains to pickup
+    df_chains.to_pickle(fspath+'chains.pkl') # write to pickle for size_chains to pickup
 
     return df_chains
 

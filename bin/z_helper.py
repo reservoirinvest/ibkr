@@ -19,6 +19,8 @@ import sys
 
 import asyncio
 
+import matplotlib.pyplot as plt
+
 from ib_insync import *
 
 from io import StringIO
@@ -345,18 +347,6 @@ def riskyprice(dft, prec):
 
 #_____________________________________
 
-# pf.py
-def pf(ib):
-    '''gives portfolio sorted by unrealizedPNL
-    Arg: (ib) as connection object
-    Returns: pf as portfolio dataframe'''
-    pf = util.df(ib.portfolio())
-    pc = util.df(list(pf.contract)).iloc[:, :6]
-    pf = pc.join(pf.drop('contract',1)).sort_values('unrealizedPNL', ascending=True)
-    return pf
-
-#_____________________________________
-
 # closest_margin.py
 def closest_margin(ib, df_opt, exchange):
     '''find the margin of the closest strike
@@ -393,6 +383,245 @@ def codetime(seconds):
     h, m = divmod(m, 60)
     
     return '{:d}:{:02d}:{:02d}'.format(int(h), int(m), int(s))
+
+#_____________________________________
+
+# portf.py
+def portf(ib):
+    '''gives (fast) portfolio sorted by unrealizedPNL
+    Arg: (ib) as connection object
+    Returns: pf as portfolio dataframe'''
+    # get the portfolio
+    pf = util.df(ib.portfolio()).drop('account', 1)
+    pc = util.df(list(pf.contract)).iloc[:, :6]
+    pf = pc.join(pf.drop('contract',1)).sort_values('unrealizedPNL', ascending=True)
+    pf.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis='columns', inplace=True)
+    dtes = {p.expiry: get_dte(p.expiry) for p in pf.itertuples() if p.secType == 'OPT'}
+    pf = pf.assign(dte=pf.expiry.map(dtes))
+    
+    return pf
+
+#_____________________________________
+
+# get_position.py
+def get_position(ib, exchange, fspath, currency, prec):
+    '''Gets the position dataframe
+    Arg: 
+        (ib) as connection object
+        (exchange) as the string <'NSE'>|<'SMART'>
+        (fspath) as the path of data in string
+        (currency) as currency <'INR'>|<'USD'>
+        (prec) as precision in float
+    Returns: pos_df DataFrame
+    Dependancies: chains.pkl'''
+    
+    # get the base portfolio
+    pf = portf(ib)
+
+    # get lots
+    df_chains = pd.read_pickle(fspath+'chains'+'.pkl').set_index(['symbol', 'expiry', 'strike'])[['undId', 'lot']]
+    pf = pf.set_index(['symbol', 'expiry', 'strike']).join(df_chains).reset_index()
+
+    cs = [Contract(conId=c, exchange=exchange, currency=currency) for c in list(pf.conId)] 
+    ticks = ib.reqTickers(*cs)
+    # ib.sleep(4)
+
+    df_bidask = pd.DataFrame([(t.contract.conId, t.bid, t.ask, t.marketPrice()) for t in ticks], 
+                 columns=['conId', 'bid', 'ask', 'mktPrice']).set_index('conId')
+
+    mod_dict = {t.contract.conId: t.modelGreeks for t in ticks if t.modelGreeks}
+
+    if mod_dict:
+        df_mod = pd.DataFrame(list(mod_dict.keys()), columns=['conId']).join(util.df(list(mod_dict.values()))).set_index('conId')
+        pf = pf.set_index('conId').join(df_bidask.join(df_mod))
+    else:
+        pf = pf.set_index('conId').join(df_bidask)
+
+    pf = pf.reset_index()
+
+    # correct the averageCost for snp
+    mask = pf.secType == 'OPT'
+    if exchange == 'SMART':
+        pf.loc[mask, 'averageCost'] = pf[mask].averageCost/pf[mask].lot
+
+    # get the harvest price
+    pf = pf.assign(hvstPrice=abs(pf.dte.map(hvstPricePct))*pf.averageCost)
+
+    # rename averageCost to avgCost to differentiate between base portfolio (unadjusted by lots) and this
+    pf.rename(columns={'averageCost': 'avgCost'}, inplace=True)
+
+    # make expPrice
+    if 'optPrice' in pf.columns:
+        pf=pf.assign(expPrice=pf[['hvstPrice', 'marketPrice', 'mktPrice', 'optPrice', 'avgCost']].min(axis=1).apply(lambda x: get_prec(x, prec)))
+    else:
+        pf=pf.assign(expPrice=pf[['hvstPrice', 'mktPrice', 'avgCost']].min(axis=1).apply(lambda x: get_prec(x, prec)))
+
+    #... get underlying price
+    und_contracts = [Stock(symbol, exchange=exchange, currency=currency) for symbol in list(pf.symbol.unique())]
+    und_quals = ib.qualifyContracts(*und_contracts)
+    tickers = ib.reqTickers(*und_quals)
+
+    uprice_dict = {u.contract.symbol: u.marketPrice() for u in tickers}
+
+    pf=pf.assign(undPrice=pf.symbol.map(uprice_dict))
+
+    pf_cols = ['conId', 'undId', 'secType', 'symbol', 'undPrice', 'right', 'strike', 'dte', 'expiry', 
+               'position', 'avgCost', 'marketPrice', 'marketValue', 'unrealizedPNL', 'realizedPNL', 
+               'lot', 'bid', 'ask', 'mktPrice', 'hvstPrice', 'expPrice']
+    pf = pf[pf_cols].sort_values(['secType', 'unrealizedPNL']).reset_index(drop=True)
+    
+    return pf
+
+#_____________________________________
+
+# get_nearmoneyopt.py
+def get_nearmoneyopt(pf):
+    '''Gets risky options that are near the money / under loss
+    Arg: (pf) as output of get_position(ib, exchange, fspath, currency, prec)
+    Returns: dataframe of options sorted by risk '''
+    
+    # get the pnl_delta... which is strike-underlying + avgCost
+    pf = pf.assign(pnlD=np.where(pf.right == 'P', pf.undPrice-pf.strike+pf.avgCost, pf.strike-pf.undPrice+pf.avgCost))
+
+    # get the portfolios whose delta loss is greater than unrealized PnL
+    df=pf[(pf.pnlD+pf.unrealizedPNL)<=0]
+
+    # append the rows above first delta loss > unrealized PnL
+    df=pd.concat([pf[:df[:1].index[0]], df])
+    
+    # keep only OPT
+    df=df[df.secType == 'OPT']
+    
+    return df
+
+#_____________________________________
+
+# jup_disp_adjust.py
+def jup_disp_adjust():
+    '''Sets jupyter to show columns in 0.00 format and shows all columns'''
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.float_format', '{:.2f}'.format)
+
+#_____________________________________
+
+# cancel_sells.py
+def cancel_sells(ib):
+    '''Cancels all sell orders
+    Arg: (ib) as connection object
+    Returns: [canceld_sells] list'''
+    # get all the trades
+    trades = ib.trades()
+    all_trades_df = util.df(t.contract for t in trades).join(util.df(t.orderStatus for t in trades)).join(util.df(t.order for t in trades), lsuffix='_')
+    all_trades_df.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis='columns', inplace=True)
+    trades_cols = ['conId', 'symbol', 'localSymbol', 'secType', 'expiry', 'strike', 'right', 
+                   'orderId', 'permId', 'action', 'totalQuantity', 'lmtPrice', 'status']
+    trades_df = all_trades_df[trades_cols]
+
+    # get the sell option trades which are open (SUBMITTED)
+    df_open_sells = trades_df[(trades_df.action == 'SELL') & 
+              (trades_df.secType == 'OPT') &
+              (trades_df.status == 'Submitted')]
+
+    # cancel the sell open orders
+    sell_openords = [t.order for t in trades if t.order.orderId in list(df_open_sells.orderId)]
+    canceld_sells = [ib.cancelOrder(order) for order in sell_openords]
+    
+    return canceld_sells
+
+#_____________________________________
+
+# place_morning_trades.py
+def place_morning_trades(ib, buy_tb, sell_tb):
+    '''Places morning trades
+    Args:
+        (ib) as connection object
+        (buy_tb) as trade block list of buys from workout
+        (sell_tb) as trade block list of sells from targets.pkl
+    Returns:
+        (buy_trades, sell_trades) executed tuple
+    '''
+    
+    # get all the trades
+    trades = ib.trades()
+
+    if trades:
+        all_trades_df = util.df(t.contract for t in trades).join(util.df(t.orderStatus for t in trades)).join(util.df(t.order for t in trades), lsuffix='_')
+        all_trades_df.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis='columns', inplace=True)
+        trades_cols = ['conId', 'symbol', 'localSymbol', 'secType', 'expiry', 'strike', 'right', 
+                       'orderId', 'permId', 'action', 'totalQuantity', 'lmtPrice', 'status']
+        trades_df = all_trades_df[trades_cols]
+
+        # get the sell option trades which are open (SUBMITTED)
+        df_open_sells = trades_df[(trades_df.action == 'SELL') & 
+                  (trades_df.secType == 'OPT') &
+                  (trades_df.status == 'Submitted')]
+    else:
+        df_open_sells = pd.DataFrame()
+
+    # clears all existing trades
+    if not df_open_sells.empty:
+        # cancel the sell open orders
+        print("\nCancelling all open SELL trades...\n")
+        sell_openords = [t.order for t in trades if t.order.orderId in list(df_open_sells.orderId)]
+        canceld_sells = [ib.cancelOrder(order) for order in sell_openords]
+
+    if buy_tb: # there is something to buy!
+        print("\n Executing BUY trades ...")
+        buy_trades = doTrades(ib, buy_tb)
+        
+    # check for margin breach
+    ac_df=util.df(ib.accountSummary())[['tag', 'value']]
+
+    if (float(ac_df[ac_df.tag == 'AvailableFunds'].value.values) /
+        float(ac_df[ac_df.tag == 'NetLiquidation'].value.values)) < ovallmarginlmt:
+        marginBreached = True
+
+    # place sell trades if margin is not breached and there is something to sell
+    if marginBreached:
+        print("\nMARGIN BREACH!!! Will not execute SELLs")
+        sell_trades = []
+    elif sell_tb: # there is something to sell!
+        print("\n Executing SELL Naked trades ...")
+        sell_trades = doTrades(ib, sell_tb)
+    else:
+        sell_trades = []
+        
+    return (buy_trades, sell_trades)
+
+#_____________________________________
+
+# buy_sell_tradingblocks.py
+
+# prepares the SELL opening trade blocks
+def sells(ib, df_targets, exchange):
+    '''Prepares SELL trade blocks for targets
+    Should NOT BE used dynamically
+    Args: 
+        (ib) as connection object
+        (df_targets) as a dataframe of targets
+        (exchange) as the exchange
+    Returns: (sell_tb) as SELL trade blocks'''
+    # make the SELL trade blocks
+    sell_tb = trade_blocks(ib=ib, df=df_targets, action='SELL', exchange=exchange)
+    
+    return sell_tb
+
+# prepare the BUY closing order trade blocks
+def buys(ib, df_buy, exchange):
+    '''Prepares BUY trade blocks for those without close trades.
+    Can be used dynamically.
+    Args:  
+        (ib) as connection object
+        (df_buy) as the dataframe to buy from workout
+        (exchange) as the exchange
+    Dependancy: sized_snp.pkl for other parameters
+    Returns: (buy_tb) as BUY trade blocks'''
+    
+    if not df_buy.empty: # if there is some contract to close
+        buy_tb = trade_blocks(ib=ib, df=df_buy, action='BUY', exchange=exchange)
+    else:
+        buy_tb = None
+    return buy_tb
 
 #_____________________________________
 

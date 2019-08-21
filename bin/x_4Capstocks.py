@@ -22,6 +22,22 @@ def capstocks(cap_blacklist):
     Returns:
         (df) as DataFrame of capstocks trades'''
     
+    # get the blacklist from google spreadsheet
+    askmsg="\nCopy Xn -> Xn [A:P] to clipboard and press Enter to continue...\n"
+    input(askmsg)
+    df=pd.read_clipboard()
+
+    # make qty and margin numeric
+    df=df.assign(margin=pd.to_numeric(df['Total Cost'].str.replace(',','')), qty=pd.to_numeric(df['Units'].str.replace(',','')))
+
+    # groupby and sort down by margin
+    df=df.groupby('Stock').sum().sort_values('margin', ascending=False)
+
+    # stocks to be blacklisted
+    cb=json.dumps(list(df[df.margin>200000].reset_index().Stock))
+    cap_blacklist=eval(cb) # generate the blacklist
+    print(f"\ncopy...\n{cb}\n...to variables.json[cap_blacklist]\n")
+    
     # Blacklist from Google Xn
     cap_blacklist = {c[:9] for c in cap_blacklist}
 

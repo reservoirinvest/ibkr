@@ -51,9 +51,9 @@ def workout_snp(ib):
         trades_cols = ['conId', 'symbol', 'localSymbol', 'secType', 'expiry', 'strike', 'right', 'undPrice', 'sd', 
                        'rom', 'action', 'status']
 
-
     # join with other parameters in sized_snp.pkl
-    trades_df = trades_df.set_index('conId').join(pd.read_pickle(fspath+'sized_snp.pkl')[['optId', 'close', 'undPrice', 'rom', 'stDev']].set_index('optId'), lsuffix='_').rename_axis('conId').reset_index()
+    trades_df = trades_df.set_index('conId').join(pd.read_pickle(fspath+'sized_snp.pkl')[['optId', 'close', 'undPrice', 'rom', 'stDev']].\
+                                                  set_index('optId'), lsuffix='_').rename_axis('conId').reset_index()
     trades_df = trades_df.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis=1)
     trades_df = trades_df.assign(sd=abs(trades_df.strike-trades_df.undPrice)/trades_df.stDev)
 
@@ -71,6 +71,13 @@ def workout_snp(ib):
     # make lot and qty for trade blocks and rename conId to optId
     pos_buy_df = pos_buy_df.assign(lot=pos_buy_df.position.apply(abs), qty=1, expPrice=pos_buy_df.hvstPrice)
     pos_buy_df.rename(columns={'conId': 'optId'}, inplace=True)
+
+    # make the buy back expPrice slightly lesser for those whose close price == buyback expPrice
+    mask = (pos_buy_df.expPrice == pos_buy_df.close) & (pos_buy_df.expPrice > 0.03)
+    pos_buy_df.loc[mask, 'expPrice'] = pos_buy_df[mask].expPrice-0.03
+    
+    # make the expPrice to the correct precision - else trades will fail
+    pos_buy_df = pos_buy_df.assign(expPrice=pos_buy_df.expPrice.apply(lambda x: get_prec(x, prec)))
     
     return pos_buy_df
 

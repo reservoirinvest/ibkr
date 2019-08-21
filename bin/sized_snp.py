@@ -86,11 +86,18 @@ def sized_snp(ib, df_chains, df_ohlcs):
     # merge with df_opt
     df_opt = pd.merge(df_opt, df_fr, on=['symbol', 'dte'])
 
+
     # make reference strikes from fall_rise
     df_opt = df_opt.assign(strikeRef = np.where(df_opt.right == 'P', 
                                                 df_opt.undPrice-df_opt.fall, 
                                                 df_opt.undPrice+df_opt.rise))
 
+    #####!!! TEMPORARY CODE BLOCK !!!######
+#     df_opt = df_opt.assign(strikeRef = np.where(df_opt.right == 'P', 
+#                                                 df_opt.undPrice-df_opt.stDev*putstdmult, 
+#                                                 df_opt.undPrice+df_opt.rise*callstdmult))    
+    ##### END TEMPORARTY CODE BLOCK ######
+    
     # get the strikes closest to the reference strikes
     df_opt = df_opt.groupby(['symbol', 'dte']) \
                              .apply(lambda g: g.iloc[abs(g.strike-g.strikeRef) \

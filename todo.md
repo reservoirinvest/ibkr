@@ -1,13 +1,16 @@
 # The To-do list
 
+## Filtering
+* From OHLCs - use Bollinger Bands + Keltner Channel + TRIX + Ultimate Oscillator
+
 ## Overall
-* Masks for filters. Test it with target.py
+* Masks for filters. Test it with ohlcs.pkl
+
 * Function to cancel uncovered SELLs
 * Function to write covered PUTs for shorts and CALLs for longs in SNP
 * Function to adjust n-band to remaining quantities
 * Function for last day trades
 * Function for NLV, Initial Margin and Composite ROI computation
-* Function for Positions which are sorted by in-the-money / near-the-money - with a flag
 * Function for naked mean and median RoM and PoP from target
 * Function for Event triggered 'dynamic' workout
 * Function to historize scrips for specific Put and Call SD for 60 continuous days for both SNP and NSE in data>history
