@@ -15,10 +15,11 @@
         "mindte": 5,
         "maxdte": 60,
         "minexpRom": 0.6,
-        "nBand": 3,
+        "minexpOptPrice": 0.25,
+        "nBand": 2,
 		"prec": 0.05,
         "blacklist":["RCOM", "JETAIRWAY"],
-        "nse_assignment_limit": 1321000,
+        "nse_assignment_limit": 1000000,
         "capstocksmult": 5,
         "cap_blacklist": ["TATAELXSI", "GRASIM", "SUNTV", "BHARATFORG", "ICICIPRULI", "PETRONET", "NBCC", "BSOFT", "ASHOKLEY", "UNIONBANK", "TVSMOTOR"]
     },
@@ -38,6 +39,6 @@
         "nBand": 5,
 		"prec":0.01,
         "blacklist":["VXX","P", "TSRO", "GOOGL"],
-        "snp_assignment_limit": 70000        
+        "snp_assignment_limit": 50000 
     }
 }

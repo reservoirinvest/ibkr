@@ -122,8 +122,8 @@ def get_connected(market, trade_type):
     
     host = hostdict[ip]
     
-    cid = 1 # initialize clientId
-    max_cid = 5 # maximum clientId allowed. max possible is 32
+    cid = 0 # initialize clientId
+    max_cid = 4 # maximum clientId allowed. max possible is 32
 
     for i in range(cid, max_cid):
         try:
@@ -530,6 +530,25 @@ def cancel_sells(ib):
 
 #_____________________________________
 
+# cancel_buys.py
+def cancel_buys(ib):
+    '''Cancels all BUYs. Use if there are duplicate BUY trades
+    Arg: (ib) as connection object
+    Returns: [canceld_buys] list'''
+    # get all the trades
+    trades = ib.trades()
+
+    # get the buy orders
+    buy_trades = [t for t in trades if t.order.action == 'BUY']
+    buy_ords = [t.order for t in buy_trades]
+    
+    # cancel the buys
+    canceld_buys = [ib.cancelOrder(order) for order in buy_ords]
+    
+    return canceld_buys
+
+#_____________________________________
+
 # place_morning_trades.py
 def place_morning_trades(ib, buy_tb, sell_tb):
     '''Places morning trades
@@ -573,8 +592,10 @@ def place_morning_trades(ib, buy_tb, sell_tb):
     ac_df=util.df(ib.accountSummary())[['tag', 'value']]
 
     if (float(ac_df[ac_df.tag == 'AvailableFunds'].value.values) /
-        float(ac_df[ac_df.tag == 'NetLiquidation'].value.values)) < ovallmarginlmt:
+        float(ac_df[ac_df.tag == 'NetLiquidation'].value.values)) > ovallmarginlmt:
         marginBreached = True
+    else:
+        marginBreached = False
 
     # place sell trades if margin is not breached and there is something to sell
     if marginBreached:
@@ -622,6 +643,63 @@ def buys(ib, df_buy, exchange):
     else:
         buy_tb = None
     return buy_tb
+
+#_____________________________________
+
+# dfrq.py
+
+def dfrq(ib, df_sized, assignment_limit, exchange):
+    '''Computes remaining quantities
+    Args:
+        (ib) as connection object
+        (df_sized) as the sized dataframe
+        (assignment_limit) as int from variables.json
+        (exchange) as 'NSE' | 'SMART'
+    Returns:
+        dfrq as DataFrame of remaining quantities'''
+
+    # ...From Portfolio
+    # _________________
+
+    p = util.df(ib.portfolio()) # portfolio table
+
+    # extract option contract info from portfolio table
+    if p is not None:  # there are some contracts in the portfolio
+        dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
+        dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiration'})
+
+        # extract the options
+        dfpo = dfp[dfp.secType == 'OPT']
+
+        # get unique symbol, lot and underlying
+        df_lu = df_sized[['symbol', 'lot', 'undId', 'undPrice']].groupby('symbol').first()
+
+        # integrate the options with lot and underlying
+        dfp1 = dfpo.set_index('symbol').join(df_lu).reset_index()
+
+        # correct the positions for nse
+        if exchange == 'NSE':
+            dfp1 = dfp1.assign(position=dfp1.position/dfp1.lot)
+
+        # get the total position for options
+        dfp1 = dfp1[['symbol', 'position']].groupby('symbol').sum()
+
+        # ... integrate postion and lots and underlyings
+        # _______________________________________________
+        dfrq1 = df_lu.join(dfp1)
+    else:
+        print('There is nothing in the portfolio')
+        dfrq1 = df_lu
+        dfrq1['position'] = 0
+
+    # fill in the other columns
+    dfrq1 = dfrq1.assign(assVal=dfrq1.position*dfrq1.lot*dfrq1.undPrice)
+    dfrq1 = dfrq1.assign(assQty=-(assignment_limit/dfrq1.lot/dfrq1.undPrice).astype('int32'))
+    dfrq1 = dfrq1.assign(mgnQty=-(assignment_limit/dfrq1.lot/dfrq1.undPrice/.225).astype('int32'))
+    dfrq1 = dfrq1.assign(remq=(dfrq1.position-dfrq1.mgnQty))
+    dfrq1 = dfrq1.assign(remq=dfrq1.remq.fillna(0))
+        
+    return dfrq1
 
 #_____________________________________
 

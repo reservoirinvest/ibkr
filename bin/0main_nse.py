@@ -25,12 +25,12 @@ def ask_user():
     Returns: 0 to 7 int'''
     # Get user input
     askmsg = "\nChoose from the following numbers:\n" + \
-            "0) Run ALL (for morning trades)\n" + \
+            "0) Prepare for morning trades" + \
             "1) Chain Generation\n" + \
             "2) OHLCs Generation\n" + \
             "3) Size the options\n" + \
             "4) Target preparation\n"+ \
-            "5) Trade in the morning\n" + \
+            "5) Place morning trades\n" + \
             "6) Workout closing trades (DYNAMIC)\n" + \
             "7) Zip Capstocks BUYs\n\n" + \
             "...Or close window to abort\n\n"
@@ -115,20 +115,13 @@ def do_all(ib):
         print("\nERROR: Margins unavailable. Please run sizing again!\n")
         return None
     
-    df_targets = target_nse(ib, df_sized, blacklist)
+    df_targets = target_nse(ib, df_sized, blacklist, nse_assignment_limit)
     print("Build the targets\n")
     
+    df_sell = df_targets
     df_buy = workout_nse(ib)
-    
-    sell_tb = sells(ib, df_targets, exchange)
-    buy_tb = buys(ib, df_buy, exchange)
-    place_morning_trades(ib, sell_tb=sell_tb, buy_tb=buy_tb)
-    print("Placed the morning trades\n")
-    
-    get_capstocks(cap_blacklist=cap_blacklist)
-    print("Generated BUY list for Capstocks\n\n")
 
-    return None
+    return df_buy, df_sell
 
 #_____________________________________
 
@@ -141,7 +134,7 @@ if __name__=='__main__':
         if userip == 0: # Run all
             start = time.time()
             print("\nRunning ALL\n")
-            do_all(ib)
+            df_buy, df_sell = do_all(ib)
             print(f"\nTook {codetime(time.time()-start)} to complete do_all\n")
             
         elif userip == 1: # Chain Generation
@@ -171,10 +164,10 @@ if __name__=='__main__':
             df_chains = pd.read_pickle(fspath+'chains.pkl')
             df_ohlcs = pd.read_pickle(fspath+'ohlcs.pkl')
             df_sized = pd.read_pickle(fspath+'sized_nse.pkl')
-            df_targets = target_nse(ib, df_sized, blacklist)
+            df_targets = target_nse(ib, df_sized, blacklist, nse_assignment_limit)
             print(f"\nMade SELL targets in {codetime(time.time()-start)}\n")
             
-        elif userip == 5: # Trade in the morning
+        elif userip == 5: # Place morning trades
             start = time.time()
             print("Trading in the morning\n")
             df_chains = pd.read_pickle(fspath+'chains.pkl')
@@ -183,9 +176,13 @@ if __name__=='__main__':
             df_targets = pd.read_pickle(fspath+'targets.pkl')
             df_buy = workout_nse(ib)
             
-            buy_tb = buys(ib, df_buy, exchange)
             sell_tb = sells(ib, df_targets, exchange)
-
+            buy_tb = buys(ib, df_buy, exchange)
+            
+            # cancel all existing trades
+            ib.reqGlobalCancel()            
+            
+            # place the morning trades            
             morning_trades = place_morning_trades(ib, sell_tb=sell_tb, buy_tb=buy_tb)
             print(f"\nCompleted morning trades in {codetime(time.time()-start)}\n")
             
@@ -194,10 +191,13 @@ if __name__=='__main__':
             print("Closing new fills\n")
             
             df_buy = workout_nse(ib)
-            buy_tb = buys(ib, df_buy, exchange)
             
-            doTrades(ib, buy_tb)
-            print(f"\nFilled close BUY orders in {codetime(time.time()-start)}\n")
+            if df_buy.empty:
+                print("\nNothing to buy!\n")
+            else:
+                buy_tb = buys(ib, df_buy, exchange)
+                doTrades(ib, buy_tb)
+                print(f"\nFilled close BUY orders in {codetime(time.time()-start)}\n")
             
         elif userip == 7: # Capstocks BUY generation
             print("Generating BUYs for Capstocks\n")

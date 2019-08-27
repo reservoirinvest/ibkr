@@ -24,15 +24,15 @@ def ask_user():
     Returns: 0 to 6 int'''
     # Get user input
     askmsg = "\nChoose from the following numbers:\n" + \
-            "0) Run ALL (for morning trades)\n" + \
+            "0) Prepare for morning trades" + \
             "1) Chain Generation\n" + \
             "2) OHLCs Generation\n" + \
             "3) Size the options\n" + \
             "4) Target preparation\n"+ \
-            "5) Trade in the morning\n" + \
+            "5) Place morning trades\n" + \
             "6) Workout closing trades (DYNAMIC)\n" + \
             "...Or close window to abort\n\n"
-
+    
     while True:
         try:
             ip = int(input(askmsg+'\n'))
@@ -103,17 +103,13 @@ def do_all(ib):
         print("\nERROR: Margins unavailable. Please run sizing again!\n")
         return None
     
-    df_targets = target_snp(ib, df_sized, blacklist)
+    df_targets = target_snp(ib, df_sized, blacklist, snp_assignment_limit)
     print("Build the targets\n")
     
-    df_buy = workout_snp(ib)
-    
-    sell_tb = sells(ib, df_targets, exchange)
-    buy_tb = buys(ib, df_buy, exchange)
-    place_morning_trades(ib, sell_tb=sell_tb, buy_tb=buy_tb)
-    print("Placed the morning trades\n\n")
+    df_sell = df_targets
+    df_buy = workout_nse(ib)
 
-    return None
+    return df_buy, df_sell
 
 #_____________________________________
 
@@ -156,10 +152,10 @@ if __name__=='__main__':
             df_chains = pd.read_pickle(fspath+'chains.pkl')
             df_ohlcs = pd.read_pickle(fspath+'ohlcs.pkl')
             df_sized = pd.read_pickle(fspath+'sized_snp.pkl')
-            df_targets = target_snp(ib, df_sized, blacklist)
+            df_targets = target_snp(ib, df_sized, blacklist, snp_assignment_limit)
             print(f"\nMade SELL targets in {codetime(time.time()-start)}\n")
             
-        elif userip == 5: # Trade in the morning
+        elif userip == 5: # Place the morning trades
             start = time.time()
             print("Trading in the morning\n")
             df_chains = pd.read_pickle(fspath+'chains.pkl')
@@ -170,6 +166,11 @@ if __name__=='__main__':
             
             sell_tb = sells(ib, df_targets, exchange)
             buy_tb = buys(ib, df_buy, exchange)
+            
+            # cancel all existing trades
+            ib.reqGlobalCancel()
+            
+            # place the morning trades
             morning_trades = place_morning_trades(ib, sell_tb=sell_tb, buy_tb=buy_tb)
             print(f"\nCompleted morning trades in {codetime(time.time()-start)}\n")
             
@@ -177,9 +178,13 @@ if __name__=='__main__':
             start = time.time()
             print("Closing new fills\n")
             df_buy = workout_snp(ib)
-            buy_tb = buys(ib, df_buy, exchange)
-            doTrades(ib, buy_tb)
-            print(f"\nFilled close BUY orders in {codetime(time.time()-start)}\n")
+            
+            if df_buy.empty:
+                print("\nNothing to buy!\n")
+            else:
+                buy_tb = buys(ib, df_buy, exchange)
+                doTrades(ib, buy_tb)
+                print(f"\nFilled close BUY orders in {codetime(time.time()-start)}\n")
 
 #_____________________________________
 
