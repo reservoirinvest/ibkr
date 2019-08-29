@@ -24,7 +24,7 @@ def ask_user():
     Returns: 0 to 6 int'''
     # Get user input
     askmsg = "\nChoose from the following numbers:\n" + \
-            "0) Prepare for morning trades" + \
+            "0) Prepare for morning trades\n" + \
             "1) Chain Generation\n" + \
             "2) OHLCs Generation\n" + \
             "3) Size the options\n" + \
@@ -107,7 +107,7 @@ def do_all(ib):
     print("Build the targets\n")
     
     df_sell = df_targets
-    df_buy = workout_nse(ib)
+    df_buy = workout_snp(ib)
 
     return df_buy, df_sell
 

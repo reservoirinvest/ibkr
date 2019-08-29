@@ -511,22 +511,27 @@ def cancel_sells(ib):
     Returns: [canceld_sells] list'''
     # get all the trades
     trades = ib.trades()
-    all_trades_df = util.df(t.contract for t in trades).join(util.df(t.orderStatus for t in trades)).join(util.df(t.order for t in trades), lsuffix='_')
-    all_trades_df.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis='columns', inplace=True)
-    trades_cols = ['conId', 'symbol', 'localSymbol', 'secType', 'expiry', 'strike', 'right', 
-                   'orderId', 'permId', 'action', 'totalQuantity', 'lmtPrice', 'status']
-    trades_df = all_trades_df[trades_cols]
-
-    # get the sell option trades which are open (SUBMITTED)
-    df_open_sells = trades_df[(trades_df.action == 'SELL') & 
-              (trades_df.secType == 'OPT') &
-              (trades_df.status == 'Submitted')]
-
-    # cancel the sell open orders
-    sell_openords = [t.order for t in trades if t.order.orderId in list(df_open_sells.orderId)]
-    canceld_sells = [ib.cancelOrder(order) for order in sell_openords]
     
-    return canceld_sells
+    if trades: # there is something in trades
+        all_trades_df = util.df(t.contract for t in trades).join(util.df(t.orderStatus for t in trades)).join(util.df(t.order for t in trades), lsuffix='_')
+        all_trades_df.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis='columns', inplace=True)
+        trades_cols = ['conId', 'symbol', 'localSymbol', 'secType', 'expiry', 'strike', 'right', 
+                       'orderId', 'permId', 'action', 'totalQuantity', 'lmtPrice', 'status']
+        trades_df = all_trades_df[trades_cols]
+
+        # get the sell option trades which are open (SUBMITTED)
+        df_open_sells = trades_df[(trades_df.action == 'SELL') & 
+                  (trades_df.secType == 'OPT') &
+                  (trades_df.status == 'Submitted')]
+
+        # cancel the sell open orders
+        sell_openords = [t.order for t in trades if t.order.orderId in list(df_open_sells.orderId)]
+        canceld_sells = [ib.cancelOrder(order) for order in sell_openords]
+
+        return canceld_sells
+    else:
+        print('\nNo sells are available to cancel\n')
+        return None
 
 #_____________________________________
 
@@ -693,6 +698,7 @@ def dfrq(ib, df_sized, assignment_limit, exchange):
         dfrq1['position'] = 0
 
     # fill in the other columns
+    dfrq1 = dfrq1.assign(position=dfrq1.position.fillna(0)) # fillnas with zero
     dfrq1 = dfrq1.assign(assVal=dfrq1.position*dfrq1.lot*dfrq1.undPrice)
     dfrq1 = dfrq1.assign(assQty=-(assignment_limit/dfrq1.lot/dfrq1.undPrice).astype('int32'))
     dfrq1 = dfrq1.assign(mgnQty=-(assignment_limit/dfrq1.lot/dfrq1.undPrice/.225).astype('int32'))

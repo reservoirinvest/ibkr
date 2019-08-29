@@ -59,7 +59,7 @@ def workout_nse(ib):
     ac_df=util.df(ib.accountSummary())[['tag', 'value']]
 
     if (float(ac_df[ac_df.tag == 'AvailableFunds'].value.values) /
-        float(ac_df[ac_df.tag == 'NetLiquidation'].value.values)) > ovallmarginlmt:
+        float(ac_df[ac_df.tag == 'NetLiquidation'].value.values)) > (1-ovallmarginlmt):
         marginBreached = True
     else:
         marginBreached = False
