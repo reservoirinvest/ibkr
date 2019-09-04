@@ -1,44 +1,55 @@
 {
-    "common": {
-        "blk": 50,
-        "ovallmarginlmt": 0.8
-    },
-    "nse": {
-        "currency": "INR",
-        "LIVE": 3000,
-        "PAPER": 3001,
-        "callstdmult": 4.5,
-		"putstdmult": 4,		
-        "exchange": "NSE",
-        "fspath": "../data/nse/",
+	"common": {
+		"market": "snp",
+		"holder": "kashi",
+		"account": "live",
+		"blk": 50,
+		"ovallmarginlmt": 0.8
+	},
+	"nse": {
+		"currency": "INR",
+		"kavi": {
+			"LIVE": 3000,
+			"PAPER": 3001
+		},
+		"callstdmult": 5,
+		"putstdmult": 4,
+		"exchange": "NSE",
+		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
-        "mindte": 5,
-        "maxdte": 60,
-        "minexpRom": 0.8,
-        "minexpOptPrice": 0.25,
-        "nBand": 3,
+		"mindte": 5,
+		"maxdte": 60,
+		"minexpRom": 0.7,
+		"minexpOptPrice": 0.25,
+		"nBand": 2,
 		"prec": 0.05,
-        "blacklist":["RCOM", "JETAIRWAY"],
-        "nse_assignment_limit": 1000000,
-        "capstocksmult": 5,
-        "cap_blacklist": ["TATAELXSI", "GRASIM", "SUNTV", "BHARATFORG", "ICICIPRULI", "PETRONET", "NBCC", "BSOFT", "ASHOKLEY", "UNIONBANK", "TVSMOTOR"]
-    },
-    "snp": {
-        "currency": "USD",
-        "LIVE": 1300,
-        "PAPER": 1301,
-        "callstdmult": 4,
-		"putstdmult": 3.5,
-        "exchange": "SMART",
-        "fspath": "../data/snp/",
+		"blacklist": ["RCOM", "JETAIRWAY"],
+		"nse_assignment_limit": 1000000,
+		"capstocksmult": 5,
+		"cap_blacklist": ["TATAELXSI", "GRASIM", "SUNTV", "BHARATFORG", "ICICIPRULI", "PETRONET", "NBCC", "BSOFT", "ASHOKLEY", "UNIONBANK", "TVSMOTOR"]
+	},
+	"snp": {
+		"currency": "USD",
+		"kashi": {
+			"LIVE": 1300,
+			"PAPER": 1301
+		},
+		"sriram": {
+			"LIVE": 2300,
+			"PAPER": 2301
+		},
+		"callstdmult": 4.5,
+		"putstdmult": 4,
+		"exchange": "SMART",
+		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
-        "mindte": 5,
-        "maxdte": 60,
-        "minexpRom": 0.75,
-        "minexpOptPrice": 0.1,
-        "nBand": 5,
-		"prec":0.01,
-        "blacklist":["VXX","P", "TSRO", "GOOGL"],
-        "snp_assignment_limit": 50000 
-    }
+		"mindte": 5,
+		"maxdte": 60,
+		"minexpRom": 0.75,
+		"minexpOptPrice": 0.1,
+		"nBand": 5,
+		"prec": 0.01,
+		"blacklist": ["VXX", "P", "TSRO", "GOOGL"],
+		"snp_assignment_limit": 50000
+	}
 }

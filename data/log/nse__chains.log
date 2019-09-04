@@ -1,0 +1,6 @@
+2019-09-03 20:52:21,087 ib_insync.client INFO Connecting to 127.0.0.1:3000 with clientId 0...
+2019-09-03 20:52:21,091 ib_insync.client INFO Connected
+2019-09-03 20:52:21,095 ib_insync.client INFO Logged on to server version 151
+2019-09-03 20:52:21,618 ib_insync.client ERROR Peer closed connection
+2019-09-03 20:52:21,619 ib_insync.client ERROR clientId 0 already in use?
+2019-09-03 20:52:23,087 ib_insync.client ERROR API connection failed: CancelledError()

@@ -62,8 +62,8 @@ def workout_snp(ib):
     #... check for margin breach
     ac_df=util.df(ib.accountSummary())[['tag', 'value']]
 
-    if (float(ac_df[ac_df.tag == 'AvailableFunds'].value.values) /
-        float(ac_df[ac_df.tag == 'NetLiquidation'].value.values)) > (1-ovallmarginlmt):
+    if (float(ac_df[ac_df.tag == 'InitMarginReq'].value.values) >
+        float(ac_df[ac_df.tag == 'NetLiquidation'].value.values)*ovallmarginlmt):
         marginBreached = True
     else:
         marginBreached = False

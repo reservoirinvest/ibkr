@@ -1,0 +1,2 @@
+2019-09-03 20:59:30,521 ib_insync.client WARNING Started to throttle requests
+2019-09-03 20:59:30,610 ib_insync.wrapper ERROR Error 200, reqId 291966: No security definition has been found for the request, contract: Stock(symbol='BANKNIFTY', exchange='NSE')
