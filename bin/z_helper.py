@@ -29,7 +29,7 @@ from os import listdir, path, unlink
 from bs4 import BeautifulSoup
 from tqdm import tqdm, tnrange
 
-from math import floor, log10, ceil
+from math import floor, log10, ceil, erf, sqrt
 from lxml import html
 
 # for requests
@@ -527,6 +527,8 @@ def cancel_sells(ib):
         # cancel the sell open orders
         sell_openords = [t.order for t in trades if t.order.orderId in list(df_open_sells.orderId)]
         canceld_sells = [ib.cancelOrder(order) for order in sell_openords]
+        
+        print(f'Cancelled {len(canceld_sells)} out of {len(sell_openords)} open orders')
 
         return canceld_sells
     else:

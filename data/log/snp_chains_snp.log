@@ -1,5 +1,0 @@
-2019-09-08 14:43:38,048 ib_insync.client WARNING Started to throttle requests
-2019-09-08 14:43:40,068 ib_insync.client WARNING Stopped to throttle requests
-2019-09-08 14:44:39,058 ib_insync.ib INFO Disconnecting from 127.0.0.1:1300, 7.41 kB sent in 192 messages, 1.24 MB received in 2574 messages, session time 63.2 s.
-2019-09-08 14:44:39,058 ib_insync.client INFO Disconnecting
-2019-09-08 14:44:39,084 ib_insync.client INFO Disconnected

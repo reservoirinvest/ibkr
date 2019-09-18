@@ -1,5 +1,8 @@
 # The To-do list
 
+## Today
+* async code for margin and price for all option contracts
+
 ## Filtering
 * From OHLCs - use Bollinger Bands + Keltner Channel + TRIX + Ultimate Oscillator
 

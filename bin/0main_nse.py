@@ -174,14 +174,15 @@ if __name__=='__main__':
             df_ohlcs = pd.read_pickle(fspath+'ohlcs.pkl')
             df_sized = pd.read_pickle(fspath+'sized_nse.pkl')            
             df_targets = pd.read_pickle(fspath+'targets.pkl')
-            df_buy = workout_nse(ib)
+
+            # cancel all existing trades
+            ib.reqGlobalCancel() 
             
-            sell_tb = sells(ib, df_targets, exchange)
+            df_buy = workout_nse(ib)
             buy_tb = buys(ib, df_buy, exchange)
             
-            # cancel all existing trades
-            ib.reqGlobalCancel()            
-            
+            sell_tb = sells(ib, df_targets, exchange)
+
             # place the morning trades            
             morning_trades = place_morning_trades(ib, sell_tb=sell_tb, buy_tb=buy_tb)
             print(f"\nCompleted morning trades in {codetime(time.time()-start)}\n")
