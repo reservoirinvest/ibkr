@@ -711,3 +711,49 @@ def dfrq(ib, df_sized, assignment_limit, exchange):
 
 #_____________________________________
 
+# get_nse_lots.py
+def get_nse_lots():
+    '''Get lots with expiry dates from nse csv
+    Arg: None
+    Returns: lots dataframe with expiry as YYYYMM'''
+
+    url = 'https://www.nseindia.com/content/fo/fo_mktlots.csv'
+    req = requests.get(url)
+    data = StringIO(req.text)
+    lots_df = pd.read_csv(data)
+
+    lots_df = lots_df[list(lots_df)[1:5]]
+
+    # strip whitespace from columns and make it lower case
+    lots_df.columns = lots_df.columns.str.strip().str.lower() 
+
+    # strip all string contents of whitespaces
+    lots_df = lots_df.applymap(lambda x: x.strip() if type(x) is str else x)
+
+    # remove 'Symbol' row
+    lots_df = lots_df[lots_df.symbol != 'Symbol']
+
+    # melt the expiries into rows
+    lots_df = lots_df.melt(id_vars=['symbol'], var_name='expiryM', value_name='lot').dropna()
+
+    # remove rows without lots
+    lots_df = lots_df[~(lots_df.lot == '')]
+
+    # convert expiry to period
+    lots_df = lots_df.assign(expiryM=pd.to_datetime(lots_df.expiryM, format='%b-%y').dt.to_period('M'))
+
+    # convert lots to integers
+    lots_df = lots_df.assign(lot=pd.to_numeric(lots_df.lot, errors='coerce'))
+
+    # convert & to %26
+    lots_df = lots_df.assign(symbol=lots_df.symbol.str.replace('&', '%26'))
+
+    # convert symbols - friendly to IBKR
+    lots_df = lots_df.assign(symbol=lots_df.symbol.str.slice(0,9))
+    ntoi = {'M%26M': 'MM', 'M%26MFIN': 'MMFIN', 'L%26TFH': 'LTFH', 'NIFTY': 'NIFTY50'}
+    lots_df.symbol = lots_df.symbol.replace(ntoi)
+
+    return lots_df.reset_index(drop=True)
+
+#_____________________________________
+
