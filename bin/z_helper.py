@@ -299,6 +299,32 @@ def trade_blocks(ib, df, action, exchange):
     
     return coblks
 
+def tb_market_price(ib, df, action, exchange):
+    '''Makes SELL contract blocks for trades
+    Args:
+       (ib) as connection object
+       (df) as the target df for setting up the trades
+       (action) = <'BUY'> | <'SELL'>
+       (exchange) as the market <'NSE'|'SMART'>
+    Returns:
+       (coblks) as contract blocks'''
+    
+    if exchange == 'NSE':
+        sell_orders = [MarketOrder(action=action, totalQuantity=q*l) for q, l in zip(df.qty, df.lot)]
+    elif exchange == 'SMART':
+        sell_orders = [MarketOrder(action=action, totalQuantity=q) for q in df.qty]
+    # get the contracts
+    cs=[Contract(conId=c) for c in df.optId]
+
+    blks = [cs[i: i+blk] for i in range(0, len(cs), blk)]
+    cblks = [ib.qualifyContracts(*s) for s in blks]
+    qc = [z for x in cblks for z in x]
+
+    co = list(zip(qc, sell_orders))
+    coblks = [co[i: i+blk] for i in range(0, len(co), blk)]
+    
+    return coblks
+
 #_____________________________________
 
 # doTrades.py

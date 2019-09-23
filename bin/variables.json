@@ -37,8 +37,8 @@
 			"LIVE": 2300,
 			"PAPER": 2301
 		},
-		"callstdmult": 5,
-		"putstdmult": 4.5,
+		"callstdmult": 4.5,
+		"putstdmult": 4,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
