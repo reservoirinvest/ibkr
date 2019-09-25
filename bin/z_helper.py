@@ -74,7 +74,7 @@ def init_variables(market):
     Outputs: None. But sets the varables'''
     
     # from json
-    a = assign_var('common') + assign_var(market)
+    a = assign_var('common') + assign_var(market.lower())
     for v in a:
         exec(v)
         
@@ -780,6 +780,99 @@ def get_nse_lots():
     lots_df.symbol = lots_df.symbol.replace(ntoi)
 
     return lots_df.reset_index(drop=True)
+
+#_____________________________________
+
+# delete_all_data.py
+def delete_all_data(market):
+    '''Deletes all data and log files
+    Arg: (market) as <'NSE'> | <'SNP'> 
+    Return: None'''
+    
+    mkt = market.lower()
+    
+    folderpaths = ["../data/"+mkt+"/", "../data/log/"]
+
+    for folder in folderpaths:
+        for files in listdir(folder):
+            file_path = path.join(folder, files)
+            try:
+                if path.isfile(file_path):
+                    unlink(file_path)
+            except Exception as e:
+#                 print(e)
+                pass
+                
+    return None
+
+#_____________________________________
+
+# get_df_buys.py
+def get_df_buys(ib, market, prec):
+    '''Get the dynamic buys for latest trades
+    Arg: 
+        (ib) as connection object
+        (market) as <'snp'> | <'nse'>
+        (prec) as precision for markets <0.01> | <0.05>
+    Returns: 
+        df_buy as a DataFrame, ready for buy and doTrade functions'''
+    #... get the open BUY trades
+
+    # get the template
+    df_opentrades = pd.read_pickle('./templates/df_opentrades.pkl')
+    df_opentrades.drop(df_opentrades.index, inplace=True) # empty it!
+
+    # get the trades
+    trades = ib.openTrades()
+    trade_cols = ['secType', 'conId', 'symbol', 'lastTradeDateOrContractMonth', 'strike', 'right', 'action', 
+                  'status', 'orderId', 'permId', 'lmtPrice', 'filled', 'remaining']
+
+    # append it, if available
+    if trades:
+        df_ot = df_opentrades.append(util.df(t.contract for t in trades).join(util.df(t.order for t in trades)).join(util.df(t.orderStatus for t in trades), lsuffix='_'))
+        df_ot = df_ot[trade_cols].rename(columns={'lastTradeDateOrContractMonth': 'expiry'})
+        active_status = {'ApiPending', 'PendingSubmit', 'PreSubmitted', 'Submitted'}
+        df_activebuys = df_ot[(df_ot.action == 'BUY') & (df_ot.status.isin(active_status))]
+        df_activesells = df_ot[(df_ot.action == 'SELL') & (df_ot.status.isin(active_status))]
+    else:
+        df_activebuys = df_opentrades[trade_cols].rename(columns={'lastTradeDateOrContractMonth': 'expiry'})
+        df_activesells = df_opentrades[trade_cols].rename(columns={'lastTradeDateOrContractMonth': 'expiry'})
+
+    #... get the portfolio
+    df_pfolio = portf(ib)
+
+    # remove from portfolio options with active buys
+    df_buys = df_pfolio[~df_pfolio.conId.isin(df_activebuys.conId)]
+
+    # remove stocks, keep only options
+    df_buys = df_buys[df_buys.secType == 'OPT'] 
+
+    # Remove the opts with position > 0. These are errors / longs that should not be re-bought automatically!
+    df_buys = df_buys[df_buys.position < 0]
+
+    # Rename the column conId to optId
+    df_buys = df_buys.rename(columns={'conId': 'optId'})
+
+    # get the dte
+    df_buys = df_buys.assign(dte=df_buys.expiry.apply(get_dte))
+
+    df_buys = df_buys[df_buys.dte >= 1] # spare the last day!
+
+    # averageCost is to be divided by 100 for SNP
+    if market == 'snp':
+        df_buys.averageCost = df_buys.averageCost/100
+
+    #... get the expected price to sell.
+    df_buys = df_buys.assign(expPrice = np.maximum( \
+                                            np.minimum(df_buys.dte.apply(hvstPricePct)*df_buys.averageCost, (df_buys.marketPrice-2*prec)), \
+                                            prec) \
+                                            .apply(lambda x: get_prec(x, prec)))
+
+    # set the quantity
+    df_buys = df_buys.assign(qty = df_buys.position.apply(abs))
+    df_buys = df_buys.assign(lot=1) # doesn't need to be lotsize for NSE
+    
+    return df_buys
 
 #_____________________________________
 
