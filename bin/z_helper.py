@@ -856,7 +856,7 @@ def get_df_buys(ib, market, prec):
     # get the dte
     df_buys = df_buys.assign(dte=df_buys.expiry.apply(get_dte))
 
-    df_buys = df_buys[df_buys.dte >= 1] # spare the last day!
+    df_buys = df_buys[df_buys.dte > 1] # spare the last day!
 
     # averageCost is to be divided by 100 for SNP
     if market == 'snp':

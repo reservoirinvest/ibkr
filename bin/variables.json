@@ -1,9 +1,14 @@
 {
 	"common": {
+        "market": "nse",
 		"holder": "kashi",
 		"account": "live",
 		"blk": 50,
-		"ovallmarginlmt": 0.8
+		"ovallmarginlmt": 0.8,
+        "callRise": true,
+        "putFall": true,
+        "onlyPuts": false,
+        "nBand": 2
 	},
 	"nse": {
 		"currency": "INR",
@@ -11,8 +16,8 @@
 			"LIVE": 3000,
 			"PAPER": 3001
 		},
-		"callstdmult": 5.5,
-		"putstdmult": 4,
+		"callstdmult": 6,
+		"putstdmult": 5,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
@@ -20,7 +25,6 @@
 		"maxdte": 60,
 		"minexpRom": 1.5,
 		"minexpOptPrice": 0.25,
-		"nBand": 3,
 		"prec": 0.05,
 		"blacklist": ["RCOM", "JETAIRWAY"],
 		"nse_assignment_limit": 1000000,
@@ -37,16 +41,15 @@
 			"LIVE": 2300,
 			"PAPER": 2301
 		},
-		"callstdmult": 4.5,
-		"putstdmult": 4,
+		"callstdmult": 6,
+		"putstdmult": 5,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 1.2,
+		"minexpRom": 1.5,
 		"minexpOptPrice": 0.1,
-		"nBand": 3,
 		"prec": 0.01,
 		"blacklist": ["VXX", "P", "TSRO", "GOOGL"],
 		"snp_assignment_limit": 50000
