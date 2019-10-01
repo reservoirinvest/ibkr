@@ -1,6 +1,6 @@
 {
 	"common": {
-        "market": "nse",
+        "market": "snp",
 		"holder": "kashi",
 		"account": "live",
 		"blk": 50,
