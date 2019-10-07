@@ -355,60 +355,7 @@ def make_targets():
         df_opt9 = pd.read_pickle(fspath+'opts.pkl')
         df_chains = pd.read_pickle(fspath+'chains.pkl')
 
-    # From Portfolio get the remaining quantitites
-    p = util.df(ib.portfolio()) # portfolio table
-
-    # extract option contract info from portfolio table
-    if p is not None:  # there are some contracts in the portfolio
-        dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
-        dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiry'})
-
-        # extract the options
-        dfpo = dfp[dfp.secType == 'OPT']
-
-        # get unique symbol, lot and underlying
-        df_lu = df_chains[['symbol', 'lot', 'undId', 'undPrice']].groupby('symbol').first()
-
-        # integrate the options with lot and underlying
-        dfp1 = dfpo.set_index('symbol').join(df_lu).reset_index()
-
-        # correct the positions for nse
-        if exchange == 'NSE':
-            dfp1 = dfp1.assign(position=dfp1.position/dfp1.lot)
-
-        # get the total position for options
-        dfp2 = dfp1[['symbol', 'position']].groupby('symbol').sum()
-
-        # Get Stock positions
-        dfs1 = p[p.contract.apply(lambda x: str(x)).str.contains('Stock')]
-        if not dfs1.empty:
-            dfs2 = util.df(list(dfs1.contract))
-            dfs3 = pd.concat([dfs2.symbol, dfs1.position.reset_index(drop=True)], axis=1)
-            dfs4 = dfs3.set_index('symbol').join(df_lu)
-            dfs5 = dfs4.assign(position = (dfs4.position/dfs4.lot))[['position']]
-            dfp2 = dfp2.add(dfs5, fill_value=0)  # Add stock positions to option positions
-
-        # integrate position and lots and underlyings
-        dfrq1 = df_lu.join(dfp2)
-
-    else:
-        print('There is nothing in the portfolio')
-        dfrq1 = df_lu
-        dfrq1['position'] = 0
-
-    # fill in the other columns
-    dfrq1 = dfrq1.assign(position=dfrq1.position.fillna(0)) # fillnas with zero
-    dfrq1 = dfrq1.assign(assVal=dfrq1.position*dfrq1.lot*dfrq1.undPrice)
-
-    assignment_limit = eval(market+'_assignment_limit')
-
-    dfrq1 = dfrq1.assign(mgnQty=-(assignment_limit/dfrq1.lot/dfrq1.undPrice))
-    dfrq1 = dfrq1.assign(remq=(dfrq1.position-dfrq1.mgnQty))
-    dfrq = dfrq1.assign(remq=dfrq1.remq.fillna(0))[['remq']]
-
-    dfrq.loc[dfrq.remq == np.inf, 'remq'] = 0  # remove them! They might be in the money.
-
-    dfrq = dfrq.assign(remq=dfrq.remq.astype('int'))
+    dfrq = dfrq(ib, df_chains, exchange) # get the remaining quantities
 
     # integrate df_opt with remaining quantity
 
@@ -432,6 +379,9 @@ def make_targets():
     df_opt13[mask] = df_opt13[mask].assign(expPrice=minexpRom/df_opt13[mask].expRom*df_opt13[mask].expPrice)
 
     df_opt13 = df_opt13.replace([np.inf, -np.inf], np.nan).dropna() # remove infinities
+    
+    df_opt13.loc[df_opt13.expPrice <= 0, 'expPrice'] = minexpOptPrice # set minimum expected option price
+    
     mask = df_opt13.expRom < minexpRom # to correct the length of the df
 
     df_opt13 = df_opt13.assign(expPrice=[get_prec(p, prec) for p in df_opt13.expPrice])
@@ -451,8 +401,6 @@ def make_targets():
     print(f"\n...Created targets. COMPLETE program took {sec2hms(time.time()-begin)}...\n")
     
     return df_targets
-
-#_____________________________________
 
 # ui_select.py
 #... user interface
@@ -481,8 +429,6 @@ def ask_user():
     
     return ip    
 
-#_____________________________________
-
 # branching.py
 #...from the selected user inputs...
 if __name__ == '__main__':
@@ -493,12 +439,12 @@ if __name__ == '__main__':
         sys.exit(1)
         
     if userip == 1: # Delete all logs+data and generate targets
-        print("\n....Generating FRESH targets...\n")
+        print(f"\n....Generating FRESH targets for {market.upper()}...\n")
         
         delete_all_data(market)
         df_targets = make_targets().reset_index(drop=True)
 
-        print("\n....Completed making fresh targets")
+        print(f"\n....Completed making fresh targets for {market.upper()}...\n")
     
     if userip == 2: # Place buys and sells
         print("\n...Placing ALL sells and closing buys...\n")

@@ -422,10 +422,6 @@ def get_df_buys(ib, market, prec):
 
     df_buys = df_buys[df_buys.dte > 1] # spare the last day!
 
-    # averageCost is to be divided by 100 for SNP
-    if market == 'snp':
-        df_buys.averageCost = df_buys.averageCost/100
-
     #... get the expected price to sell.
     df_buys = df_buys.assign(expPrice = np.maximum( \
                                             np.minimum(df_buys.dte.apply(hvstPricePct)*df_buys.averageCost, (df_buys.marketPrice-2*prec)), \
@@ -529,10 +525,92 @@ def portf(ib):
         pf.rename({'lastTradeDateOrContractMonth': 'expiry'}, axis='columns', inplace=True)
         dtes = {p.expiry: get_dte(p.expiry) for p in pf.itertuples() if p.secType == 'OPT'}
         pf = pf.assign(dte=pf.expiry.map(dtes))
+        
+        # averageCost is to be divided by 100 for SNP
+        if market == 'snp':
+            pf = pf.assign(averageCost=np.where(pf.secType == 'OPT', pf.averageCost/100, pf.averageCost))
     else:
         pf = pd.DataFrame()
     
     return pf
+
+#_____________________________________
+
+# dfrq.py
+def dfrq(ib, df_chains, exchange):
+    '''Get remaining quantities
+    Args:
+        (ib) as connection object
+        (df_chains) as chains dataframe with undPrice
+        (exchange) as <'NSE'> | <'SMART'>
+    Returns:
+        dfrq as a dataframe of remaining quantities indexed on symbol'''
+
+    # From Portfolio get the remaining quantitites
+    p = util.df(ib.portfolio()) # portfolio table
+
+    # extract option contract info from portfolio table
+    if p is not None:  # there are some contracts in the portfolio
+        dfp = pd.concat([p, util.df([c for c in p.contract])[util.df([c for c in p.contract]).columns[:7]]], axis=1).iloc[:, 1:]
+        dfp = dfp.rename(columns={'lastTradeDateOrContractMonth': 'expiry'})
+
+        # extract the options
+        dfpo = dfp[dfp.secType == 'OPT']
+
+        # get unique symbol, lot and underlying
+        df_lu = df_chains[['symbol', 'lot', 'undId', 'undPrice']].groupby('symbol').first()
+
+        # integrate the options with lot and underlying
+        dfp1 = dfpo.set_index('symbol').join(df_lu).reset_index()
+
+        # correct the positions for nse
+        if exchange == 'NSE':
+            dfp1 = dfp1.assign(position=dfp1.position/dfp1.lot)
+
+        # get the total position for options
+        dfp2 = dfp1[['symbol', 'position']].groupby('symbol').sum()
+
+        # Get Stock positions
+        dfs1 = p[p.contract.apply(lambda x: str(x)).str.contains('Stock')]
+        if not dfs1.empty:
+            dfs2 = util.df(list(dfs1.contract))
+            dfs3 = pd.concat([dfs2.symbol, dfs1.position.reset_index(drop=True)], axis=1)
+            dfs4 = dfs3.set_index('symbol').join(df_lu)
+            dfs5 = dfs4.assign(position = (dfs4.position/dfs4.lot))[['position']]
+            dfp2 = dfp2.add(dfs5, fill_value=0)  # Add stock positions to option positions
+
+        # integrate position and lots and underlyings
+        dfrq1 = df_lu.join(dfp2)
+
+    else:
+        print('There is nothing in the portfolio')
+        dfrq1 = df_lu
+        dfrq1['position'] = 0
+
+    # fill in the other columns
+    dfrq1 = dfrq1.assign(position=dfrq1.position.fillna(0)) # fillnas with zero
+    dfrq1 = dfrq1.assign(assVal=dfrq1.position*dfrq1.lot*dfrq1.undPrice)
+
+    assignment_limit = eval(market+'_assignment_limit')
+
+    dfrq1 = dfrq1.assign(mgnQty=-(assignment_limit/dfrq1.lot/dfrq1.undPrice))
+    dfrq1 = dfrq1.assign(remq=(dfrq1.position-dfrq1.mgnQty))
+    dfrq = dfrq1.assign(remq=dfrq1.remq.fillna(0))[['remq']]
+
+    dfrq.loc[dfrq.remq == np.inf, 'remq'] = 0  # remove them! They might be in the money.
+
+    dfrq = dfrq.assign(remq=dfrq.remq.astype('int'))
+    
+    return dfrq
+
+#_____________________________________
+
+# StopExecution.py
+class StopExecution(Exception):
+    '''Stops execution in an iPython cell gracefully.
+    To be used instead of exit()'''
+    def _render_traceback_(self):
+        pass
 
 #_____________________________________
 

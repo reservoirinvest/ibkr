@@ -1,13 +1,15 @@
 # ignore all files except the ones below with !
 .ipynb_checkpoints
 zzJunk
-*.pkl
 *.xlsx
 *.csv
+*.log
 
 
 # ignore sub-folders
 **/bin/__pycache__/
+**/zArchives
+**/data/log/
 
 # But do not ignore these files
 !*.ipynb
