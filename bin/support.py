@@ -223,7 +223,7 @@ def cancel_sells(ib):
         # get the sell option trades which are open (SUBMITTED)
         df_open_sells = trades_df[(trades_df.action == 'SELL') & 
                   (trades_df.secType == 'OPT') &
-                  (trades_df.status == 'Submitted')]
+                  trades_df.status.isin(active_status)]
 
         # cancel the sell open orders
         sell_openords = [t.order for t in trades if t.order.orderId in list(df_open_sells.orderId)]
@@ -353,19 +353,8 @@ def get_instruments(ib, market):
 
         instruments = [Index(symbol=s, exchange=exchange) if s in ix_symbols else Stock(symbol=s, exchange=exchange) for s in scrips]
         
-    # qualify contracts (asyncio)
-    q_task = []
-    async def qual_coro(instruments):
-        '''Coroutines with waits for qualification of instruments
-        Arg: (instruments) as list of Stock(symbol, exchange, currency)
-        Returns: awaits of qualifyContractsAsync(s)'''
-        for s in instruments:
-            q_task.append(ib.qualifyContractsAsync(s))
-        return await asyncio.gather(*q_task)
-
-    uct = asyncio.run(qual_coro(instruments))
-
-    und_contracts = [b for a in uct for b in a]
+    # qualify contracts  
+    und_contracts = ib.qualifyContracts(*instruments)
         
     return und_contracts
 
@@ -395,7 +384,7 @@ def get_df_buys(ib, market, prec):
     if trades:
         df_ot = df_opentrades.append(util.df(t.contract for t in trades).join(util.df(t.order for t in trades)).join(util.df(t.orderStatus for t in trades), lsuffix='_'))
         df_ot = df_ot[trade_cols].rename(columns={'lastTradeDateOrContractMonth': 'expiry'})
-        active_status = {'ApiPending', 'PendingSubmit', 'PreSubmitted', 'Submitted'}
+#         active_status = {'ApiPending', 'PendingSubmit', 'PreSubmitted', 'Submitted'}
         df_activebuys = df_ot[(df_ot.action == 'BUY') & (df_ot.status.isin(active_status))]
         df_activesells = df_ot[(df_ot.action == 'SELL') & (df_ot.status.isin(active_status))]
     else:
@@ -610,7 +599,182 @@ class StopExecution(Exception):
     '''Stops execution in an iPython cell gracefully.
     To be used instead of exit()'''
     def _render_traceback_(self):
+        print(f'Gracefully exiting the cell :)')
         pass
+
+#_____________________________________
+
+# covers.py
+def covers(ib, market, df_chains, df_ohlcsd, fspath):
+    '''Generate covered calls and puts for assigned SNP options
+    Works only for SNP, as NSE cannot hold assigned stocks
+    Args:
+        (ib) as connection object
+        (market) as <'snp'|'nse'>
+        (df_chains) as DataFrame from pd.read_pickle(fspath+'chains.pkl')
+        (df_ohlcsd) as DataFrame from pd.read_pickle(fspath+'ohlcs.pkl')
+        (fspath) as path of data file
+    Returns: 
+        df_covered as a DataFrame, ready for sells blocks and trade placement
+        Also writes writecovers.pkl'''
+
+    # abort program if market is NSE
+    if market == 'nse':
+        try:
+            shell = get_ipython().__class__.__name__
+        except NameError:
+            exit() # Exit the interpreter
+        raise StopExecution
+
+    # get the portfolio
+    pf = portf(ib)
+
+    pf = pf.assign(shares=np.where(pf.secType == 'STK', pf.position, pf.position*100)) # get shares
+
+    #...get the long and short stocks
+    pfstk = pf[pf.secType == 'STK'] # stocks only
+
+    # get the underlying price for stocks
+    contracts = [Stock(symbol=s, exchange=exchange, currency=currency) for s in pfstk.symbol.unique()]
+    qc = ib.qualifyContracts(*contracts)
+    tickers = ib.reqTickers(*qc)
+    undPrices = {t.contract.symbol: t.marketPrice() for t in tickers}
+
+    pfstk = pfstk.assign(undPrice = [undPrices[p] for p in pfstk.symbol]) # get latest undPrices
+
+    #...get the options for the stocks
+    pfopts = pf[pf.secType == 'OPT'] # options only for the long and short stocks
+    pfoptstk = pfopts.assign(undPrice = [catch(lambda: undPrices[p]) for p in pfopts.symbol]).dropna()
+
+    pfstkopts = pd.concat([pfstk, pfoptstk]).sort_values(['symbol', 'secType'], ascending=[True, False])
+
+    # ... make dataframe for covered calls
+    # longs with covered calls
+    lmask = (((pfstkopts.secType == 'STK') & (pfstkopts.shares > 0)) | ((pfstkopts.right == 'C') & (pfstkopts.shares < 0)))
+    longs = pfstkopts[lmask]
+
+    # get the sum of shares for the longs
+    longshares = longs.groupby('symbol', as_index=False).agg({'shares': 'sum'})
+
+    # remove those long symbols which has more call sells than what is available (exposed over cover) 
+    longshares = longshares[longshares.shares > 0]
+
+    # remove symbols in longshares that do not have underlying long stock
+    longsymbols = pfstkopts[(pfstkopts.secType == 'STK') & (pfstkopts.shares > 0)].symbol
+    longshares = longshares[longshares.symbol.isin(longsymbols)]
+
+    # make it to a dictionary
+    forcovcalls = longshares[['symbol', 'shares']]
+    covcalls = dict(zip(forcovcalls.symbol, forcovcalls.shares))
+
+    # ...make dataframe for covered puts
+    # shorts with covered puts
+    pmask = ((pfstkopts.secType == 'STK') & (pfstkopts.shares < 0)) | ((pfstkopts.right == 'P') & (pfstkopts.shares < 0))
+    shorts = pfstkopts[pmask]
+
+    # change the sign of short shares
+    shorts = shorts.assign(shares = np.where(shorts.secType == 'STK', abs(shorts.shares), shorts.shares))
+
+    # get the sum of shares for the shorts
+    shortshares = shorts.groupby('symbol', as_index=False).agg({'shares': 'sum'})
+
+    # remove symbols in shortshares that do not have underlying short stock
+    shortsymbols = pfstkopts[(pfstkopts.secType == 'STK') & (pfstkopts.shares < 0)].symbol
+    shortshares = shortshares[shortshares.symbol.isin(shortsymbols)]
+
+    # remove those short symbols which have more put sells than what is available (expeosed over cover)
+    shortshares = shortshares[shortshares.shares > 0]
+
+    # make it to a dictionary
+    forcovputs = shortshares[['symbol', 'shares']]
+    covputs = dict(zip(forcovputs.symbol, abs(forcovputs.shares))) # puts show negative shares!
+
+    # get the option chains for symbols needing covers
+    needcovers = set(covcalls.keys()).union(set(covputs.keys()))
+    df_chains = df_chains[df_chains.symbol.isin(needcovers)].reset_index(drop=True)
+
+    # replace dte with 1 for dte <= 0
+    df_chains.loc[df_chains.dte <=0,  'dte'] = 1
+    df1 = df_chains[df_chains.dte <= maxdte]
+
+    # assign right
+    df1 = df1.assign(right=np.where(df1.strike >= df1.undPrice, 'C', 'P'))
+
+    # generate std dataframe
+    dfo = df_ohlcsd[['symbol', 'stDev']]  # lookup dataframe
+    dfo = dfo.assign(dte=dfo.groupby('symbol').cumcount()) # get the cumulative count for location as dte
+    dfo.set_index(['symbol', 'dte'])
+
+    dfd = df1[['symbol', 'dte']]  # data to be looked at
+    dfd = dfd.drop_duplicates()  # remove duplicates
+
+    df_std = dfd.set_index(['symbol', 'dte']).join(dfo.set_index(['symbol', 'dte']))
+
+    # join to get std in chains
+    df2 = df1.set_index(['symbol', 'dte']).join(df_std).reset_index()
+
+    # get the strikes of interest 1SD away from undPrice
+    df2 = df2.assign(strikeRef = np.where(df2.right == 'P', df2.undPrice - df2.stDev*1.1, df2.undPrice + df2.stDev*1.1))
+
+    #...overwrite strikeRef with averageCost, as appropriate
+
+    # get the averagecost of the stocks
+    costdict = {d['symbol']: d['averageCost'] for d in pfstk[['symbol', 'averageCost']].to_dict(orient='records')}
+    df2 = df2.assign(costRef=[catch(lambda: costdict[s]) for s in df2.symbol])
+
+    # for Puts...
+    df2 = df2.assign(strikeRef = np.where((df2.right == 'P') & (df2.costRef < df2.strikeRef), df2.costRef, df2.strikeRef))
+    # for Calls...
+    df2 = df2.assign(strikeRef = np.where((df2.right == 'C') & (df2.costRef > df2.strikeRef), df2.costRef, df2.strikeRef))
+
+    # get the options closest to the strikeRef
+    df3 = df2.groupby(['symbol', 'dte'], as_index=False) \
+                     .apply(lambda g: g.iloc[abs(g.strike - g.strikeRef) \
+                     .argsort()[:2]]) \
+                     .reset_index(drop=True)
+
+    # choose the minimum dte for the covers
+    df4 = df3.loc[df3.groupby(['right', 'symbol']).dte.idxmin()]
+
+    # get the target covered call dataframe
+    mask = (df4.right == 'C') & (df4.symbol.isin(covcalls.keys())) | \
+           (df4.right == 'P') & (df4.symbol.isin(covputs.keys()))
+    df5 = df4[mask]
+
+    # determine the quantities for covered calls/ puts
+    mapper = {'C': covcalls,
+              'P': covputs}
+
+    df5 = df5.assign(qty=df5.groupby('right').symbol.apply(lambda s: s.map(mapper[s.name])/100))
+
+    # remove unnecessary calls and puts (that don't have underlying STK)
+    df_covered = df5[((df5.right == 'C') & df5.symbol.isin(covcalls.keys())) | \
+                     ((df5.right == 'P') & df5.symbol.isin(covputs.keys()))].reset_index(drop=True)
+
+    # get the option prices
+    covopts = ib.qualifyContracts(*[Option(c.symbol, c.expiry, c.strike, c.right, exchange) for i, c in df_covered.iterrows()])
+
+    # asyncio coroutine
+    async def coro():
+        tasks = [ib.reqTickersAsync(s) for s in covopts]
+        return await asyncio.gather(*tasks)
+
+    covticks = [c for r in ib.run(coro()) for c in r]
+
+#     covticks = ib.reqTickers(*covopts)
+#     ib.sleep(1)
+    
+    df_covered1 = df_covered.assign(optId = [i.conId for i in covopts])
+    df_covered2 = df_covered1.join(pd.DataFrame([(c.bid, c.ask, c.marketPrice()) for c in covticks], columns=['bid', 'ask', 'mktPrice']))
+
+    # expected price as max of minexpOptprice, mktPrice and 3rd quartile of bid-ask spread
+    expPrice = np.maximum(np.maximum([get_prec(p, prec) for p in (df_covered2.ask-df_covered2.mktPrice)/2 + df_covered2.mktPrice + prec], df_covered2.mktPrice), minexpOptPrice)
+
+    df_covered3 = df_covered2.assign(expPrice = expPrice)
+    
+    df_covered3.to_pickle(fspath+'writecovers.pkl')
+    
+    return df_covered3
 
 #_____________________________________
 

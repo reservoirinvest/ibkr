@@ -43,6 +43,10 @@ def make_targets():
 
     #..instruments
     und_contracts = get_instruments(ib, market)
+
+#     # DATA LIMITER!!!
+#     und_contracts = und_contracts[:25]
+
     id_sym = {u.conId: u.symbol for u in und_contracts}
     und_blks = [und_contracts[i: i+blk] for i in range(0, len(und_contracts), blk)]
 
@@ -57,17 +61,16 @@ def make_targets():
 
     # get the chains
 
-    ch_task = []
     async def chains_coro(und_contracts):
         '''Get the chains for underlyings
         Arg: (und_contracts) as a list
         Returns: awaits of reqSecDefOptPramsAsyncs'''
-        for c in und_contracts:
-            ch_task.append(ib.reqSecDefOptParamsAsync(underlyingSymbol=c.symbol, futFopExchange='', 
-                                 underlyingConId=c.conId, underlyingSecType=c.secType))
-        return await asyncio.gather(*ch_task)
+        ch_tasks = [ib.reqSecDefOptParamsAsync(underlyingSymbol=c.symbol, futFopExchange='', 
+                                 underlyingConId=c.conId, underlyingSecType=c.secType)
+                                 for c in und_contracts]
+        return await asyncio.gather(*ch_tasks)
 
-    ch = asyncio.run(chains_coro(und_contracts))
+    ch = ib.run(chains_coro(und_contracts))
 
     chs = [b for a in ch for b in a]
 
@@ -114,21 +117,15 @@ def make_targets():
     start = time.time()
 
     async def ohlc_coro(und_contracts):
-
-        ohlc_task = []
-
         # build the tasks
-        for qc in und_contracts:
-            ohlc_task.append(ib.reqHistoricalDataAsync(contract=qc, endDateTime='', 
+        ohlc_tasks = [ib.reqHistoricalDataAsync(contract=qc, endDateTime='', 
                                             durationStr='365 D', barSizeSetting='1 day',  
-                                                        whatToShow='Trades', useRTH=True))
-        return await asyncio.gather(*ohlc_task)
+                                                        whatToShow='Trades', useRTH=True) for qc in und_contracts]
+        return await asyncio.gather(*ohlc_tasks)
 
-    # make blocks of tasks
-    ohlcs = []
+    ohlcs = [ib.run(ohlc_coro(unds)) for unds in und_blks] 
 
-    for unds in und_blks:
-        ohlcs = ohlcs + asyncio.run(ohlc_coro(unds))
+    ohlcs = [i for j in ohlcs for i in j]
 
     # make the ohlc dataframe
     df_ohlc = pd.DataFrame()
@@ -267,36 +264,32 @@ def make_targets():
     qo_task = []
     opts = [Option(i.symbol, i.expiry, i.strike, i.right, exchange) for i in df9[['symbol', 'expiry', 'strike', 'right']].itertuples()]
 
-    async def qopt_coro(contracts):
-        '''Coroutines with waits for qualification of stocks
-        Arg: (contracts) as list of Stock(symbol, exchange, currency)
-        Returns: awaits of qualifyContractsAsync(s)'''
-        for c in contracts:
-            qo_task.append(ib.qualifyContractsAsync(c))
-        return await asyncio.gather(*qo_task)
-
-    qual_opts = asyncio.run(qopt_coro(opts))
+    qual_opts = ib.qualifyContracts(*opts)
 
     print(f"\nCompleted qualifying option contracts in {sec2hms(time.time()-start)}\n")
 
     #... Get tickers and optPrice (asyncio)
     start = time.time()
+    opt_blks = [qual_opts[i: i+blk] for i in range(0, len(qual_opts), blk)]
 
-    opt_ct = [ct for q in qual_opts for ct in q if q] # remove []
-    opt_blks = [opt_ct[i: i+blk] for i in range(0, len(opt_ct), blk)]
+#     ot = []
 
-    ot = []
+#     for opt in opt_blks:
+#         reqot = ib.reqTickersAsync(*opt)
+#         ot.append(ib.run(asyncio.wait_for(reqot, 18)))
 
-    for opt in opt_blks:
-        reqot = ib.reqTickersAsync(*opt)
-        ot.append(ib.run(asyncio.wait_for(reqot, 18)))
+    async def optpricecoro(opt):
+        tasks = [ib.reqTickersAsync(c) for c in opt]
+        return await asyncio.gather(*tasks)
+
+    ot = [i for j in [ib.run(optpricecoro(opts)) for opts in opt_blks] for i in j]
 
     opt_price = {t.contract.conId: t.marketPrice() 
                  for opts in ot 
                  for t in opts 
                  if t.marketPrice() > -1} # cleaned nans
 
-    df_opt1 = util.df(opt_ct)
+    df_opt1 = util.df(qual_opts)
     df_opt2 = df_opt1[list(df_opt1)[1:6]].rename(columns={'lastTradeDateOrContractMonth': 'expiry', 'conId': 'optId'})
 
     df_opt3 = df_opt2.assign(optPrice=df_opt2.optId.map(opt_price))
@@ -311,7 +304,7 @@ def make_targets():
     start = time.time()
 
     # build options and orders
-    mgn_opts = list(df_opt5.optId.map({c.conId: c for c in opt_ct}))
+    mgn_opts = list(df_opt5.optId.map({c.conId: c for c in qual_opts}))
 
     if market == 'snp':
         mgn_ords = [Order(action='SELL', orderType='MKT', totalQuantity=1, whatIf=True) for r in df_opt5.lot]
@@ -320,13 +313,11 @@ def make_targets():
 
     co = list(zip(mgn_opts, mgn_ords))
 
-    task = []
     async def margin_coro(co):   
-        for c in co:
-            task.append(ib.whatIfOrderAsync(*c))
-        return await asyncio.gather(*task)
+        tasks = [ib.whatIfOrderAsync(*c) for c in co]
+        return await asyncio.gather(*tasks)
 
-    margins = asyncio.run(margin_coro(co))
+    margins = ib.run(margin_coro(co))
 
     # market is checked to weed out wierd commissions. NSE has commission, while SNP has maxCommission!
     if market == 'nse':
@@ -355,11 +346,11 @@ def make_targets():
         df_opt9 = pd.read_pickle(fspath+'opts.pkl')
         df_chains = pd.read_pickle(fspath+'chains.pkl')
 
-    dfrq = dfrq(ib, df_chains, exchange) # get the remaining quantities
+    dfrq1 = dfrq(ib, df_chains, exchange) # get the remaining quantities
 
     # integrate df_opt with remaining quantity
 
-    df_opt10 = df_opt9.set_index('symbol').join(dfrq).reset_index()
+    df_opt10 = df_opt9.set_index('symbol').join(dfrq1).reset_index()
     df_opt10 = df_opt10[df_opt10.remq > 0]  # remove options that have busted the remaining quantities
 
     df_opt11 = df_opt10[~df_opt10.symbol.isin(blacklist)] # remove blacklists
@@ -411,7 +402,7 @@ def ask_user():
     
     # Get user input
     askmsg = "\nChoose from the following numbers:\n" + \
-             "1) Delete ALL logs and data and generate fresh targets\n" + \
+             "1) Delete ALL logs and data, generate fresh targets and covers\n" + \
              "2) Place ALL (Buy and Sell) trades\n" + \
              "3) Only place closing BUY trades\n\n" + \
              "0) ABORT\n\n"
@@ -438,11 +429,15 @@ if __name__ == '__main__':
         print("\n....ABORTING....\n")
         sys.exit(1)
         
-    if userip == 1: # Delete all logs+data and generate targets
+    if userip == 1: # Delete all logs+data, generate targets and covers
         print(f"\n....Generating FRESH targets for {market.upper()}...\n")
         
         delete_all_data(market)
         df_targets = make_targets().reset_index(drop=True)
+        
+        df_chains = pd.read_pickle(fspath+'chains.pkl')
+        df_ohlcsd = pd.read_pickle(fspath+'ohlcs.pkl')
+        df_covered = covers(ib, market, df_chains, df_ohlcsd, fspath)
 
         print(f"\n....Completed making fresh targets for {market.upper()}...\n")
     
@@ -465,16 +460,32 @@ if __name__ == '__main__':
         
         #... Place buys from existing open trades
         df_buys = get_df_buys(ib, market, prec)
-        buy_tb = buys(ib, df_buys, exchange)
-        buy_trades = doTrades(ib, buy_tb)
+        if not df_buys.empty:
+            buy_tb = buys(ib, df_buys, exchange)
+            buy_trades = doTrades(ib, buy_tb)
+        else:
+            print(f"No options to close in {market.upper()}")
+        
+        #... Place covered SELL trades
+        df_chains = pd.read_pickle(fspath+'chains.pkl')
+        df_ohlcsd = pd.read_pickle(fspath+'ohlcs.pkl')
+        df_covered = covers(ib, market, df_chains, df_ohlcsd, fspath)
+        if not df_covered.empty:
+            sell_covers = sells(ib, df_covered, exchange)
+            covertrades = doTrades(ib, sell_covers)
+        else:
+            print(f"No covers needed on {market.upper()} longs and shorts!")
         
     if userip == 3: # Only closing buys - dynamic trade
         print("\n...Placing closing buys only...\n")
         
         #... Place buys from existing open trades
         df_buys = get_df_buys(ib, market, prec)
-        buy_tb = buys(ib, df_buys, exchange)
-        buy_trades = doTrades(ib, buy_tb)
+        if not df_buys.empty:
+            buy_tb = buys(ib, df_buys, exchange)
+            buy_trades = doTrades(ib, buy_tb)
+        else:
+            print(f"No buys on existing {market.upper()} open trades")
 
 #_____________________________________
 
