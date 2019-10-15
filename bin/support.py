@@ -599,7 +599,7 @@ class StopExecution(Exception):
     '''Stops execution in an iPython cell gracefully.
     To be used instead of exit()'''
     def _render_traceback_(self):
-        print(f'Gracefully exiting the cell :)')
+#         print(f'Gracefully exiting the cell :)')
         pass
 
 #_____________________________________
@@ -768,13 +768,48 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
     df_covered2 = df_covered1.join(pd.DataFrame([(c.bid, c.ask, c.marketPrice()) for c in covticks], columns=['bid', 'ask', 'mktPrice']))
 
     # expected price as max of minexpOptprice, mktPrice and 3rd quartile of bid-ask spread
-    expPrice = np.maximum(np.maximum([get_prec(p, prec) for p in (df_covered2.ask-df_covered2.mktPrice)/2 + df_covered2.mktPrice + prec], df_covered2.mktPrice), minexpOptPrice)
+    expPrice = np.maximum(
+                    np.maximum([get_prec(p, prec) for p in (df_covered2.ask-df_covered2.mktPrice)/2 + df_covered2.mktPrice], df_covered2.mktPrice + (prec*upthecoverfactor)), 
+                    minexpOptPrice)
 
     df_covered3 = df_covered2.assign(expPrice = expPrice)
     
     df_covered3.to_pickle(fspath+'writecovers.pkl')
     
     return df_covered3
+
+#_____________________________________
+
+# create_templates.py
+def create_templates(fspath):
+    '''Creates empty templates in bin/templates/ folder
+    Arg: (fspath) - path from json
+    Returns: Empty df_trades.pkl'''
+    
+    df = pd.read_pickle(fspath+'targets.pkl')
+    df.drop(df.index, inplace=True)
+    df.to_pickle('./templates/df_trades.pkl')
+    
+    print("\nEmpty df_trades template pickled\n")
+
+#_____________________________________
+
+# get_acc_summary.py
+def get_acc_summary(ib):
+    '''Gets a dictionary of account summary
+    Arg: (ib) as connection object
+    Returns: {dict} of account summary'''
+    
+    df_ac = util.df(ib.accountSummary())
+    NLV = float(df_ac[df_ac.tag.isin(['NetLiquidation'])].value.iloc[0])
+    initMargin = float(df_ac[df_ac.tag.isin(['InitMarginReq'])].value.iloc[0])
+    unrealPnL = float(df_ac[df_ac.tag.isin(['UnrealizedPnL'])].value.iloc[0])
+    realPnL = float(df_ac[df_ac.tag.isin(['RealizedPnL'])].value.iloc[0])
+    avFunds = float(df_ac[df_ac.tag.isin(['AvailableFunds'])].value.iloc[0])
+    acsum = {"NLV": NLV, "initmargin": initMargin, "unrealzPnL": unrealPnL, 
+             "realzPnL": realPnL, "avFunds": avFunds}
+    
+    return acsum    
 
 #_____________________________________
 

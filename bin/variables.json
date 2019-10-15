@@ -1,31 +1,31 @@
 {
 	"common": {
-        "market": "nse",
+        "market": "snp",
 		"user": "kashi",
 		"account": "live",
         "host": "127.0.0.1",
 		"blk": 50,
-		"ovallmarginlmt": 0.8,
-        "callRise": true,
-        "putFall": true,
-        "onlyPuts": false,
         "nBand": 3,
+        "callRise": true,
+        "putFall": false,
+        "onlyPuts": false,
         "active_status": ["ApiPending", "PendingSubmit", "PreSubmitted", "Submitted"]
 	},
 	"nse": {
 		"currency": "INR",
+		"avlblMarginlmt": 400000,
 		"kavi": {
 			"LIVE": 3000,
 			"PAPER": 3001
 		},
-		"callstdmult": 4,
-		"putstdmult": 3.25,
+		"callstdmult": 3.5,
+		"putstdmult": 2.75,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 1,
+		"minexpRom": 1.25,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
 		"blacklist": ["RCOM", "JETAIRWAY"],
@@ -35,6 +35,7 @@
 	},
 	"snp": {
 		"currency": "USD",
+		"avlblMarginlmt": 8000,
 		"kashi": {
 			"LIVE": 1300,
 			"PAPER": 1301
@@ -43,17 +44,18 @@
 			"LIVE": 2300,
 			"PAPER": 2301
 		},
-		"callstdmult": 3.75,
-		"putstdmult": 3.25,
+		"callstdmult": 3.5,
+		"putstdmult": 3.5,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 1,
+		"minexpRom": 3,
 		"minexpOptPrice": 0.1,
 		"prec": 0.01,
 		"blacklist": ["VXX", "P", "TSRO", "GOOGL"],
-		"snp_assignment_limit": 50000
+		"snp_assignment_limit": 50000,
+        "upthecoverfactor": 4
 	}
 }
