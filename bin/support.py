@@ -754,29 +754,32 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
     # get the option prices
     covopts = ib.qualifyContracts(*[Option(c.symbol, c.expiry, c.strike, c.right, exchange) for i, c in df_covered.iterrows()])
 
-    # asyncio coroutine
-    async def coro():
-        tasks = [ib.reqTickersAsync(s) for s in covopts]
-        return await asyncio.gather(*tasks)
+#     # asyncio coroutine
+#     async def coro():
+#         tasks = [ib.reqTickersAsync(s) for s in covopts]
+#         return await asyncio.gather(*tasks)
 
-    covticks = [c for r in ib.run(coro()) for c in r]
+#     covticks = [c for r in ib.run(coro()) for c in r]
+
+    covticks = ib.reqTickers(*covopts)
 
 #     covticks = ib.reqTickers(*covopts)
 #     ib.sleep(1)
     
     df_covered1 = df_covered.assign(optId = [i.conId for i in covopts])
     df_covered2 = df_covered1.join(pd.DataFrame([(c.bid, c.ask, c.marketPrice()) for c in covticks], columns=['bid', 'ask', 'mktPrice']))
-
+    df_covered3 = df_covered2.dropna()
+    
     # expected price as max of minexpOptprice, mktPrice and 3rd quartile of bid-ask spread
     expPrice = np.maximum(
-                    np.maximum([get_prec(p, prec) for p in (df_covered2.ask-df_covered2.mktPrice)/2 + df_covered2.mktPrice], df_covered2.mktPrice + (prec*upthecoverfactor)), 
+                    np.maximum([get_prec(p, prec) for p in (df_covered3.ask-df_covered3.mktPrice)/2 + df_covered3.mktPrice], df_covered3.mktPrice + (prec*upthecoverfactor)), 
                     minexpOptPrice)
 
-    df_covered3 = df_covered2.assign(expPrice = expPrice)
+    df_covered4 = df_covered3.assign(expPrice = expPrice)
     
-    df_covered3.to_pickle(fspath+'writecovers.pkl')
+    df_covered4.to_pickle(fspath+'writecovers.pkl')
     
-    return df_covered3
+    return df_covered4
 
 #_____________________________________
 

@@ -25,7 +25,7 @@
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 1.25,
+		"minexpRom": 1.35,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
 		"blacklist": ["RCOM", "JETAIRWAY"],
@@ -35,7 +35,7 @@
 	},
 	"snp": {
 		"currency": "USD",
-		"avlblMarginlmt": 8000,
+		"avlblMarginlmt": 25000,
 		"kashi": {
 			"LIVE": 1300,
 			"PAPER": 1301
@@ -51,7 +51,7 @@
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 3,
+		"minexpRom": 2,
 		"minexpOptPrice": 0.1,
 		"prec": 0.01,
 		"blacklist": ["VXX", "P", "TSRO", "GOOGL"],

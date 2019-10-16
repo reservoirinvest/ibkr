@@ -115,7 +115,7 @@ def make_targets(margin_breached):
 
     df_chains.to_pickle(fspath+'chains.pkl')
 
-    print(f"\nCompleted getting chains in {sec2hms(time.time()-start)}\n")
+    print(f"Completed getting chains in {sec2hms(time.time()-start)}\n")
 
     #... Get the OHLCs (asyncio)
     start = time.time()
@@ -150,7 +150,7 @@ def make_targets(margin_breached):
 
     df_ohlcsd.to_pickle(fspath+'ohlcs.pkl')
 
-    print(f"\nCompleted getting ohlcs in {sec2hms(time.time()-start)}\n")
+    print(f"Completed getting ohlcs in {sec2hms(time.time()-start)}\n")
 
     if not margin_breached:
         # ... Size the chains
@@ -261,7 +261,7 @@ def make_targets(margin_breached):
         if onlyPuts:
             df9 = df9[df9.right == 'P'].reset_index(drop=True)
 
-        print(f"\nCompleted sizing for targetting in {sec2hms(time.time()-start)}\n")
+        print(f"Completed sizing for targetting in {sec2hms(time.time()-start)}\n")
 
         #... Qualify the option contracts
         start = time.time()
@@ -271,7 +271,7 @@ def make_targets(margin_breached):
 
         qual_opts = ib.qualifyContracts(*opts)
 
-        print(f"\nCompleted qualifying option contracts in {sec2hms(time.time()-start)}\n")
+        print(f"Completed qualifying option contracts in {sec2hms(time.time()-start)}\n")
 
         #... Get tickers and optPrice (asyncio)
         start = time.time()
@@ -297,7 +297,7 @@ def make_targets(margin_breached):
         df_opt5 = pd.merge(df_opt4, df9, on=['symbol', 'expiry', 'strike', 'right'])
         df_opt5 = df_opt5.dropna() # remove NAs in - for instance from lots
 
-        print(f"\nCompleted getting option prices in {sec2hms(time.time()-start)}\n")
+        print(f"Completed getting option prices in {sec2hms(time.time()-start)}\n")
 
         #... Get the margins
         start = time.time()
@@ -333,7 +333,7 @@ def make_targets(margin_breached):
 
         df_opt8.to_pickle(fspath+'opts.pkl')
 
-        print(f"\nCompleted getting margins, RoM and PoP in {sec2hms(time.time()-start)}\n")
+        print(f"Completed getting margins, RoM and PoP in {sec2hms(time.time()-start)}\n")
 
         # ... Eliminate < 0 remaining quantities
         start = time.time()
@@ -377,6 +377,10 @@ def make_targets(margin_breached):
         df_opt13 = df_opt13.assign(expPrice=[get_prec(p, prec) for p in df_opt13.expPrice])
         df_opt13[mask] = df_opt13[mask].assign(expRom=(df_opt13[mask].expPrice*df_opt13[mask].lot-df_opt13[mask].comm)/df_opt13[mask].margin*365/df_opt13[mask].dte)
 
+        cols = ['symbol', 'optId', 'expiry', 'strike', 'right', 'dte', 'undId', 'undPrice', 'lot', 'stDev', 'fall', 'rise', 
+                'strikeRef', 'lo52', 'hi52', 'margin', 'comm', 'PoP', 'RoM', 'remq', 'qty', 'optPrice', 'expPrice', 'expRom']
+        df_opt13 = df_opt13[cols]
+        
         # symbols busting remaining quantity limit
         d = {'qty': 'sumOrdQty', 'remq': 'remq'}
         df_bustingrq = df_opt13.groupby('symbol').agg({'qty': 'sum', 'remq': 'mean'}).rename(columns=d)
@@ -388,11 +392,11 @@ def make_targets(margin_breached):
 
         df_targets = pd.read_pickle(fspath+'targets.pkl').reset_index(drop=True)
 
-        print(f"\n...Created targets. COMPLETE program took {sec2hms(time.time()-begin)}...\n")
+        print(f"...Created targets. COMPLETE program took {sec2hms(time.time()-begin)}...\n")
     
     else:
-        print(f"\n!!! Margin Breach for {market}. No targets generated !!!\n")
-        df_targets = pd.DataFrame([])
+        print(f"!!! Margin Breach for {market}. No targets generated !!!\n")
+        df_targets = pd.read_pickle('./templates/df_trades.pkl')
     
     return df_targets
 
@@ -417,7 +421,7 @@ def ask_user():
             print("\nSorry, I didn't understand what you entered. Try again!\n")
             continue # Loop again
         if not ip in [0, 1, 2, 3]:
-            print(f"\n{ip} is a wrong number! Choose any number from 0 to 4 and press <Enter>\n")
+            print(f"{ip} is a wrong number! Choose any number from 0 to 4 and press <Enter>\n")
         else:
             break # success and exit loop
     
@@ -429,18 +433,83 @@ if __name__ == '__main__':
     userip = ask_user()
     
     # check for available funds
+    acsum = get_acc_summary(ib)
 
-    df_ac = util.df(ib.accountSummary())
-    NLV = float(df_ac[df_ac.tag.isin(['NetLiquidation'])].value.iloc[0])
-    initMargin = float(df_ac[df_ac.tag.isin(['InitMarginReq'])].value.iloc[0])
-    unrealPnL = float(df_ac[df_ac.tag.isin(['UnrealizedPnL'])].value.iloc[0])
-    realPnL = float(df_ac[df_ac.tag.isin(['RealizedPnL'])].value.iloc[0])
-    avFunds = float(df_ac[df_ac.tag.isin(['AvailableFunds'])].value.iloc[0])
-    acsum = {"NLV": NLV, "initmargin": initMargin, "unrealzPnL": unrealPnL, 
-             "realzPnL": realPnL, "avFunds": avFunds}
     if acsum['avFunds'] < avlblMarginlmt:
         print(f"Fresh SELLs will not be placed due to low available funds\n{acsum['avFunds']} < {avlblMarginlmt}!!\n")
         margin_breached = True
+    else:
+        margin_breached = False
+
+    if userip == 0: # Exit
+        print("\n....ABORTING....\n")
+        sys.exit(1)
+        
+    if userip == 1: # Delete all logs+data, generate targets and covers
+        print(f"....Generating FRESH targets for {market.upper()}...\n")
+        
+        delete_all_data(market)
+        df_targets = make_targets(margin_breached).reset_index(drop=True)
+        
+        df_chains = pd.read_pickle(fspath+'chains.pkl')
+        df_ohlcsd = pd.read_pickle(fspath+'ohlcs.pkl')
+        df_covered = covers(ib, market, df_chains, df_ohlcsd, fspath)
+
+        print(f"....Completed making fresh targets for {market.upper()}...\n")
+    
+    if userip == 2: # Place buys and sells
+              
+        begin = time.time()
+        
+        print("\n...Placing ALL sells and closing buys...\n")
+        
+        # cancel existing all open trades
+        ib.reqGlobalCancel()
+
+        # get targets from the pickle if fresh, else generate
+        tgt_hrs = (datetime.now() - datetime.fromtimestamp(path.getmtime(fspath+'targets.pkl'))).total_seconds()/60/60
+        if tgt_hrs > 3: # needs target regeneration
+            df_targets = make_targets().reset_index(drop=True) # regenerate targets
+        else:
+            df_targets=pd.read_pickle(fspath+'targets.pkl').reset_index(drop=True) 
+            
+        # place the sell trades
+        if not df_targets.empty:
+            sell_tb = sells(ib, df_targets, exchange)
+            sell_trades = doTrades(ib, sell_tb)
+        else:
+            print("\n...No targets to SELL...\n")
+        
+        #... Place buys from existing open trades
+        df_buys = get_df_buys(ib, market, prec)
+        if not df_buys.empty:
+            buy_tb = buys(ib, df_buys, exchange)
+            buy_trades = doTrades(ib, buy_tb)
+        else:
+            print(f"No options to close in {market.upper()}\n")
+        
+        #... Place covered SELL trades
+        df_chains = pd.read_pickle(fspath+'chains.pkl')
+        df_ohlcsd = pd.read_pickle(fspath+'ohlcs.pkl')
+        df_covered = covers(ib, market, df_chains, df_ohlcsd, fspath)
+        if not df_covered.empty:
+            sell_covers = sells(ib, df_covered, exchange)
+            covertrades = doTrades(ib, sell_covers)
+        else:
+            print(f"No covers needed on {market.upper()} longs and shorts!\n")
+              
+        print(f"Completed placing ALL sells and buys in {sec2hms(time.time()-begin)} for {market.upper()}\n")
+        
+    if userip == 3: # Only closing buys - dynamic trade
+        print("\n...Placing closing buys only...\n")
+        
+        #... Place buys from existing open trades
+        df_buys = get_df_buys(ib, market, prec)
+        if not df_buys.empty:
+            buy_tb = buys(ib, df_buys, exchange)
+            buy_trades = doTrades(ib, buy_tb)
+        else:
+            print(f"No buys on existing {market.upper()} open trades\n")
 
 #_____________________________________
 
