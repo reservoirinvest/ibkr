@@ -496,7 +496,7 @@ if __name__ == '__main__':
             sell_covers = sells(ib, df_covered, exchange)
             covertrades = doTrades(ib, sell_covers)
         else:
-            print(f"No covers needed on {market.upper()} longs and shorts!\n")
+            print(f"No covering contracts needed / available on {market.upper()} longs and shorts!\n")
               
         print(f"Completed placing ALL sells and buys in {sec2hms(time.time()-begin)} for {market.upper()}\n")
         

@@ -45,16 +45,16 @@
 			"PAPER": 2301
 		},
 		"callstdmult": 3.5,
-		"putstdmult": 3.5,
+		"putstdmult": 3.25,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 2,
-		"minexpOptPrice": 0.1,
+		"minexpRom": 2.15,
+		"minexpOptPrice": 0.15,
 		"prec": 0.01,
-		"blacklist": ["VXX", "P", "TSRO", "GOOGL"],
+		"blacklist": ["VXX", "P", "TSRO", "GOOGL, GD"],
 		"snp_assignment_limit": 50000,
         "upthecoverfactor": 4
 	}
