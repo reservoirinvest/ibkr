@@ -45,7 +45,7 @@
 			"PAPER": 2301
 		},
 		"callstdmult": 3.5,
-		"putstdmult": 3.25,
+		"putstdmult": 3.1,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
