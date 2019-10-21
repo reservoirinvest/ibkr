@@ -714,7 +714,7 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
     df2 = df1.set_index(['symbol', 'dte']).join(df_std).reset_index()
 
     # get the strikes of interest 1SD away from undPrice
-    df2 = df2.assign(strikeRef = np.where(df2.right == 'P', df2.undPrice - df2.stDev*1.1, df2.undPrice + df2.stDev*1.1))
+    df2 = df2.assign(strikeRef = np.where(df2.right == 'P', df2.undPrice - df2.stDev*coverSD, df2.undPrice + df2.stDev*coverSD))
 
     #...overwrite strikeRef with averageCost, as appropriate
 
@@ -750,6 +750,14 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
     # remove unnecessary calls and puts (that don't have underlying STK)
     df_covered = df5[((df5.right == 'C') & df5.symbol.isin(covcalls.keys())) | \
                      ((df5.right == 'P') & df5.symbol.isin(covputs.keys()))].reset_index(drop=True)
+
+
+
+   # change the date of covered expiry to the coming week if dte <= 1
+    newExp = df_covered.expiry.apply(lambda d: util.formatIBDatetime(util.parseIBDatetime(str(d)) + datetime.timedelta(days=7))[:8])
+
+    mask = df_covered.dte <= 1
+    df_covered.loc[mask, 'expiry'] = newExp[mask]
 
     # get the option prices
     covopts = ib.qualifyContracts(*[Option(c.symbol, c.expiry, c.strike, c.right, exchange) for i, c in df_covered.iterrows()])
