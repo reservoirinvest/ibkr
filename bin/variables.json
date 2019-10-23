@@ -1,6 +1,6 @@
 {
 	"common": {
-        "market": "snp",
+        "market": "nse",
 		"user": "kashi",
 		"account": "live",
         "host": "127.0.0.1",
@@ -9,7 +9,8 @@
         "callRise": true,
         "putFall": false,
         "onlyPuts": false,
-        "active_status": ["ApiPending", "PendingSubmit", "PreSubmitted", "Submitted"]
+        "active_status": ["ApiPending", "PendingSubmit", "PreSubmitted", "Submitted"],
+		"coverSD": 1.25
 	},
 	"nse": {
 		"currency": "INR",

@@ -6,15 +6,20 @@ zzJunk
 *.log
 
 
+
 # ignore sub-folders
+**/bin/.vscode
+**/bin/_pycache_
 **/bin/__pycache__/
 **/zArchives
 **/data/log/
+
 
 # But do not ignore these files
 !*.ipynb
 !*.MD
 !*.md
 !*.svg
+!*.pkl
 
 
