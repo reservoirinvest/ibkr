@@ -4,11 +4,12 @@ zzJunk
 *.xlsx
 *.csv
 *.log
+.vs*
 
 
 
 # ignore sub-folders
-**/bin/.vscode
+**/bin/.vs*
 **/bin/_pycache_
 **/bin/__pycache__/
 **/zArchives

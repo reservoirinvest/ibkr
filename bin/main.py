@@ -4,6 +4,7 @@
 from support import *
 
 import time
+from datetime import datetime
 from itertools import product
 from math import erf, sqrt
 import sys
@@ -466,7 +467,7 @@ if __name__ == '__main__':
         ib.reqGlobalCancel()
 
         # get targets from the pickle if fresh, else generate
-        tgt_hrs = (datetime.datetime.now() - datetime.datetime.fromtimestamp(path.getmtime(fspath+'targets.pkl'))).total_seconds()/60/60
+        tgt_hrs = (datetime.now() - datetime.fromtimestamp(path.getmtime(fspath+'targets.pkl'))).total_seconds()/60/60
         if tgt_hrs > 3: # needs target regeneration
             df_targets = make_targets().reset_index(drop=True) # regenerate targets
         else:

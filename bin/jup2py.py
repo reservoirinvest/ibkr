@@ -19,12 +19,16 @@ fs = listdir() # get the filenames
 magic_words = [s for s in str(magics).split(' ') if s not in '' if '%' in s[0]]
 magic_words = [s for s in magic_words if s != '%']
 
+ignores = ['ztest'] # ignore filenames having these words
 
-# searchfor = ['helper.ipynb', 'nse_func.ipynb', 'snp_func.ipynb', 'nse_main.ipynb', 'snp_main.ipynb']  # list of files to be converted into
-# ipfilelist = [f for f in fs if any(word in f for word in searchfor)]
+# exclude lines having these words and magic commands 
 
 # remove unwanted file extensions
-ipfilelist = [f for f in fs if f[-5:] == 'ipynb' if f[:1] not in ['_'] if f[:-6] not in ['___test']]
+ipfilelist = [f for f in fs 
+              if f[-5:] == 'ipynb' 
+              if f[:1] not in ['_'] 
+              if f in [x for x in fs 
+                       if all(item not in x for item in ignores)] ]
 
 for file in ipfilelist:
     code_cells = []  #initialize code_cells
@@ -39,7 +43,6 @@ for file in ipfilelist:
                     if not any(word in line for word in exclude):
                         f.write(line)        
                 f.write('\n\n#_____________________________________\n\n')
-        
 
 #_____________________________________
 

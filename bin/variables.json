@@ -1,15 +1,20 @@
 {
 	"common": {
-        "market": "nse",
+		"market": "snp",
 		"user": "kashi",
 		"account": "live",
-        "host": "127.0.0.1",
+		"host": "127.0.0.1",
 		"blk": 50,
-        "nBand": 3,
-        "callRise": true,
-        "putFall": false,
-        "onlyPuts": false,
-        "active_status": ["ApiPending", "PendingSubmit", "PreSubmitted", "Submitted"],
+		"nBand": 1,
+		"callRise": true,
+		"putFall": false,
+		"onlyPuts": false,
+		"active_status": [
+			"ApiPending",
+			"PendingSubmit",
+			"PreSubmitted",
+			"Submitted"
+		],
 		"coverSD": 1.25
 	},
 	"nse": {
@@ -20,19 +25,34 @@
 			"PAPER": 3001
 		},
 		"callstdmult": 3.5,
-		"putstdmult": 2.75,
+		"putstdmult": 3,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 1.35,
+		"minexpRom": 2,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
-		"blacklist": ["RCOM", "JETAIRWAY"],
+		"blacklist": [
+			"RCOM",
+			"JETAIRWAY"
+		],
 		"nse_assignment_limit": 1000000,
 		"capstocksmult": 5,
-		"cap_blacklist": ["TATAELXSI", "GRASIM", "SUNTV", "BHARATFORG", "ICICIPRULI", "PETRONET", "NBCC", "BSOFT", "ASHOKLEY", "UNIONBANK", "TVSMOTOR"]
+		"cap_blacklist": [
+			"TATAELXSI",
+			"GRASIM",
+			"SUNTV",
+			"BHARATFORG",
+			"ICICIPRULI",
+			"PETRONET",
+			"NBCC",
+			"BSOFT",
+			"ASHOKLEY",
+			"UNIONBANK",
+			"TVSMOTOR"
+		]
 	},
 	"snp": {
 		"currency": "USD",
@@ -45,7 +65,7 @@
 			"LIVE": 2300,
 			"PAPER": 2301
 		},
-		"callstdmult": 3.5,
+		"callstdmult": 4,
 		"putstdmult": 3.1,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
@@ -55,8 +75,13 @@
 		"minexpRom": 2.15,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
-		"blacklist": ["VXX", "P", "TSRO", "GOOGL, GD"],
+		"blacklist": [
+			"VXX",
+			"P",
+			"TSRO",
+			"GOOGL, GD"
+		],
 		"snp_assignment_limit": 50000,
-        "upthecoverfactor": 4
+		"upthecoverfactor": 4
 	}
 }
