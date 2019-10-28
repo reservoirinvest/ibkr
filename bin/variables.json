@@ -72,7 +72,7 @@
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 2.15,
+		"minexpRom": 2.1,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [
