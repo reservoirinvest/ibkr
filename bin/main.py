@@ -408,7 +408,7 @@ def ask_user():
     Returns: (int) between 0..7'''
     
     # Get user input
-    askmsg = "\nChoose from the following numbers:\n" + \
+    askmsg = "\nFor "+market.upper()+ " choose from the following numbers:\n\n" + \
              "1) Delete ALL logs and data, generate fresh targets and covers\n" + \
              "2) Place ALL (Buy and Sell) trades\n" + \
              "3) Only place closing BUY trades\n\n" + \

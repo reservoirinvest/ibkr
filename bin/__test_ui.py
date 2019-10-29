@@ -33,18 +33,18 @@ with IB().connect('127.0.0.1', 1300, 0) as ib:
 	pnl = ib.reqPnL(acct)
 	print(pnl)
 	
-# print(pnldict)
+# # print(pnldict)
 
-import PyQt5.QtWidgets as qt
+# import PyQt5.QtWidgets as qt
 
-class AcSummTbl(qt.QTableWidget):
+# class AcSummTbl(qt.QTableWidget):
 
-	headers = ['Item': 'Value']
+# 	headers = ['Item': 'Value']
 	
-	def __init__(self, parent=None):
-		qt.QTableWidget.__init__(self, parent)
+# 	def __init__(self, parent=None):
+# 		qt.QTableWidget.__init__(self, parent)
 		
 	
-	for i, j in enumerate(
+# 	for i, j in enumerate(
 	
 

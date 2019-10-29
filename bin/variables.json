@@ -25,13 +25,13 @@
 			"PAPER": 3001
 		},
 		"callstdmult": 3.5,
-		"putstdmult": 3,
+		"putstdmult": 2.9,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 2,
+		"minexpRom": 1.2,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
 		"blacklist": [
@@ -66,13 +66,13 @@
 			"PAPER": 2301
 		},
 		"callstdmult": 4,
-		"putstdmult": 3.1,
+		"putstdmult": 3,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 2.1,
+		"minexpRom": 1.85,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [
