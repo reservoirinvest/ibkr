@@ -5,7 +5,7 @@
 		"account": "live",
 		"host": "127.0.0.1",
 		"blk": 50,
-		"nBand": 1,
+		"nBand": 2,
 		"callRise": true,
 		"putFall": false,
 		"onlyPuts": false,
@@ -72,7 +72,7 @@
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 1.85,
+		"minexpRom": 1.4,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [

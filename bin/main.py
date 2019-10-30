@@ -5,7 +5,6 @@ from support import *
 
 import time
 from datetime import datetime
-from itertools import product
 from math import erf, sqrt
 import sys
 
@@ -45,73 +44,11 @@ def make_targets(margin_breached):
     begin = time.time()  # for the overall program
     start = begin
 
-    #..instruments
-    und_contracts = get_instruments(ib, market)
+    # get the chains and underlying contracts
+    df_chains, und_contracts = get_chains(ib, market)
 
-#     # DATA LIMITER!!!
-#     und_contracts = und_contracts[:25]
-
-    id_sym = {u.conId: u.symbol for u in und_contracts}
+    # blocks for getting ohlcs
     und_blks = [und_contracts[i: i+blk] for i in range(0, len(und_contracts), blk)]
-
-    #..undprices
-    und_ticks = ib.reqTickers(*und_contracts)
-    undPrice = {u.contract.conId: u.marketPrice() for u in und_ticks}
-
-    print(f"\nCompleted getting underlyings in {sec2hms(time.time()-start)}\n")
-
-    #... get the chains
-    start = time.time()
-
-    # get the chains
-
-    async def chains_coro(und_contracts):
-        '''Get the chains for underlyings
-        Arg: (und_contracts) as a list
-        Returns: awaits of reqSecDefOptPramsAsyncs'''
-        ch_tasks = [ib.reqSecDefOptParamsAsync(underlyingSymbol=c.symbol, futFopExchange='', 
-                                 underlyingConId=c.conId, underlyingSecType=c.secType)
-                                 for c in und_contracts]
-        return await asyncio.gather(*ch_tasks)
-
-    ch = ib.run(chains_coro(und_contracts))
-
-    chs = [b for a in ch for b in a]
-
-    chains = {c.underlyingConId: c for c in chs}
-
-    sek = {b for a in [list(product([k], m.expirations, m.strikes)) for k, m in chains.items()] for b in a}
-
-    df_chains1 = pd.DataFrame(list(sek), columns=['undId', 'expiry', 'strike'])
-    df_chains1 = df_chains1.assign(undId=df_chains1.undId.astype('int32'))
-
-    df_chains1 = df_chains1.assign(symbol = df_chains1.undId.map(id_sym), 
-                                 undPrice = df_chains1.undId.map(undPrice))
-
-    if market == 'nse':  # code for NSE only
-        # add expiryM to get lots from get_nse_lots()
-        df_chains1 = df_chains1.assign(expiryM=pd.to_datetime(df_chains1.expiry).dt.strftime('%Y-%m'))
-        # update lots of NSE equities
-        lots = get_nse_lots()
-        lots = lots.assign(expiryM=lots.expiryM.astype('str'))
-        lots = lots[['symbol', 'expiryM', 'lot']].set_index(['symbol', 'expiryM'])
-
-        chz = df_chains1.set_index(['symbol', 'expiryM'])
-
-        df_chains = chz.join(lots).reset_index().drop('expiryM', 1)
-
-        # For those with nan - forget the expiry!
-        df_symlot = lots.reset_index().drop('expiryM', 1).drop_duplicates()
-        symlot = dict(zip(df_symlot.symbol, df_symlot.lot))
-
-        df_chains = df_chains.assign(lot=df_chains.symbol.map(symlot).fillna(df_chains.lot))
-
-    else: # For SNP
-        df_chains = df_chains1.assign(lot=100)
-
-    df_chains = df_chains.sort_values(['symbol', 'expiry', 'strike'])
-    df_chains = df_chains[['symbol', 'undId', 'expiry', 'strike', 'undPrice', 'lot']].reset_index(drop=True)
-    df_chains = df_chains.assign(dte=df_chains.expiry.apply(get_dte))
 
     df_chains.to_pickle(fspath+'chains.pkl')
 
@@ -167,6 +104,7 @@ def make_targets(margin_breached):
             df_ohlcsd = pd.read_pickle(fspath+'ohlcs.pkl')
 
         # replace dte with 1 for dte <= 0
+        df_chains = df_chains.assign(dte=df_chains.expiry.apply(get_dte))
         df_chains.loc[df_chains.dte <=0,  'dte'] = 1
         df1 = df_chains[df_chains.dte <= maxdte]
 
@@ -261,7 +199,7 @@ def make_targets(margin_breached):
         if onlyPuts:
             df9 = df9[df9.right == 'P'].reset_index(drop=True)
 
-        print(f"Completed sizing for targetting in {sec2hms(time.time()-start)}\n")
+        print(f"Completed sizing targets in {sec2hms(time.time()-start)}\n")
 
         #... Qualify the option contracts
         start = time.time()
@@ -380,7 +318,7 @@ def make_targets(margin_breached):
         cols = ['symbol', 'optId', 'expiry', 'strike', 'right', 'dte', 'undId', 'undPrice', 'lot', 'stDev', 'fall', 'rise', 
                 'strikeRef', 'lo52', 'hi52', 'margin', 'comm', 'PoP', 'RoM', 'remq', 'qty', 'optPrice', 'expPrice', 'expRom']
         df_opt13 = df_opt13[cols]
-        
+
         # symbols busting remaining quantity limit
         d = {'qty': 'sumOrdQty', 'remq': 'remq'}
         df_bustingrq = df_opt13.groupby('symbol').agg({'qty': 'sum', 'remq': 'mean'}).rename(columns=d)
@@ -393,7 +331,7 @@ def make_targets(margin_breached):
         df_targets = pd.read_pickle(fspath+'targets.pkl').reset_index(drop=True)
 
         print(f"...Created targets. COMPLETE program took {sec2hms(time.time()-begin)}...\n")
-    
+
     else:
         print(f"!!! Margin Breach for {market}. No targets generated !!!\n")
         df_targets = pd.read_pickle('./templates/df_trades.pkl')

@@ -9,6 +9,7 @@ import numpy as np
 import datetime
 import pandas as pd
 from math import floor, log10
+from itertools import product
 import requests
 from io import StringIO
 import asyncio
@@ -238,63 +239,19 @@ def cancel_sells(ib):
 
 #_____________________________________
 
-# get_nse_lots.py
-def get_nse_lots():
-    '''Get lots with expiry dates from nse csv
-    Arg: None
-    Returns: lots dataframe with expiry as YYYYMM'''
-
-    url = 'https://www.nseindia.com/content/fo/fo_mktlots.csv'
-    req = requests.get(url)
-    data = StringIO(req.text)
-    lots_df = pd.read_csv(data)
-
-    lots_df = lots_df[list(lots_df)[1:5]]
-
-    # strip whitespace from columns and make it lower case
-    lots_df.columns = lots_df.columns.str.strip().str.lower() 
-
-    # strip all string contents of whitespaces
-    lots_df = lots_df.applymap(lambda x: x.strip() if type(x) is str else x)
-
-    # remove 'Symbol' row
-    lots_df = lots_df[lots_df.symbol != 'Symbol']
-
-    # melt the expiries into rows
-    lots_df = lots_df.melt(id_vars=['symbol'], var_name='expiryM', value_name='lot').dropna()
-
-    # remove rows without lots
-    lots_df = lots_df[~(lots_df.lot == '')]
-
-    # convert expiry to period
-    lots_df = lots_df.assign(expiryM=pd.to_datetime(lots_df.expiryM, format='%b-%y').dt.to_period('M'))
-
-    # convert lots to integers
-    lots_df = lots_df.assign(lot=pd.to_numeric(lots_df.lot, errors='coerce'))
-
-    # convert & to %26
-    lots_df = lots_df.assign(symbol=lots_df.symbol.str.replace('&', '%26'))
-
-    # convert symbols - friendly to IBKR
-    lots_df = lots_df.assign(symbol=lots_df.symbol.str.slice(0,9))
-    ntoi = {'M%26M': 'MM', 'M%26MFIN': 'MMFIN', 'L%26TFH': 'LTFH', 'NIFTY': 'NIFTY50'}
-    lots_df.symbol = lots_df.symbol.replace(ntoi)
-
-    return lots_df.reset_index(drop=True)
-
-#_____________________________________
-
-# get_instruments.py
-def get_instruments(ib, market):
-    '''Gets the contract list for the market
+# get_chains.py
+def get_chains(ib, market):
+    '''Gets chains for the markets
     Args:
         (ib) as connection object
         (market) as <'snp'>|<'nse'>
     Returns:
-        list of qualified contracts'''
+        (df_chains, contracts) tuple with:
+            df_chains as dataframe of symbol, expiries, undId, lots and undPrice
+            contracts as the undId contracts'''
     
-    if market == 'snp': # code for snp only - 35 mins
-
+    if market == 'snp':
+        
         # Download cboe weeklies to a dataframe
         dls = "http://www.cboe.com/publish/weelkysmf/weeklysmf.xls"
 
@@ -323,40 +280,167 @@ def get_instruments(ib, market):
         # add in the lots
         df_symbols = df_symbols.assign(lot=100)
 
-        # !!! DATA LIMITER !!! Get 8 symbols. 5 Equities and 3 ETFs
-        # df_symbols = pd.concat([df_symbols[df_symbols.ProductType == 'Equity'].head(7), df_symbols.head(3)]) # !!! DATA LIMITER !!!
+        # !!! Start DATA LIMITER !!! Get 8 symbols. 5 Equities and 3 ETFs !!!
+#         df_symbols = pd.concat([df_symbols[df_symbols.ProductType == 'Equity'].head(7), df_symbols.head(3)]) # !!! DATA LIMITER !!!
+        # ...!!! End DATA LIMITER !!!
 
-        instruments = [Stock(s, exchange, currency) for s in list(df_symbols.symbol)]
+        stocks = [Stock(s, exchange, currency) for s in list(df_symbols.symbol)]
+        contracts = ib.qualifyContracts(*stocks)
 
-    else: # code for NSE - 15 mins
+        # get the conIds
+        symConDict = {u.symbol: u.conId for u in contracts}
+        conSymDict = {u.conId: u.symbol for u in contracts}
 
-        # extract from tradeplusonline
-        tp = pd.read_html('https://www.tradeplusonline.com/Equity-Futures-Margin-Calculator.aspx')
-        df_tp = tp[1][2:].iloc[:, :3].reset_index(drop=True)
-        df_tp.columns=['symbol', 'lot', 'undPrice']
-        df_tp = df_tp.apply(pd.to_numeric, errors='ignore') # convert lot and undPrice to numeric
+        # get the prices
+        async def undpricecoro(cs):
+            tasks = [ib.reqTickersAsync(c) for c in cs]
+            return await asyncio.gather(*tasks)
+
+        try:
+            undpList = [u for undp in ib.run(undpricecoro(contracts), timeout = 25) for u in undp]
+        except Exception as e:
+            print(f"ATTENTION: The error {e} appeared while getting undPrice tickers")
+
+        undPrices = {u.contract.symbol: u.marketPrice() for u in undpList}
+
+        # get the chains
+        async def chains_coro(und_contracts):
+            '''Get the chains for underlyings
+            Arg: (und_contracts) as a list
+            Returns: awaits of reqSecDefOptPramsAsyncs'''
+            ch_tasks = [ib.reqSecDefOptParamsAsync(underlyingSymbol=c.symbol, futFopExchange='', 
+                                     underlyingConId=c.conId, underlyingSecType=c.secType)
+                                     for c in und_contracts]
+            return await asyncio.gather(*ch_tasks)
+
+        ch = ib.run(chains_coro(contracts))
+
+        chs = [b for a in ch for b in a]
+
+        chains = {c.underlyingConId: c for c in chs}
+
+        sek = {b for a in [list(product([k], m.expirations, m.strikes)) for k, m in chains.items()] for b in a}
+
+        dfc = pd.DataFrame(list(sek), columns=['undId', 'expiry', 'strike'])
+        dfc = dfc.assign(dte=[(util.parseIBDatetime(dt)-datetime.datetime.now().date()).days for dt in dfc.expiry])
+        dfc = dfc.assign(undId=dfc.undId.astype('int32'))
+
+        dfc = dfc.assign(symbol=dfc.undId.map(conSymDict))
+
+        df_chains = dfc.assign(lot=100)
+        df_chains = df_chains.assign(undPrice=df_chains.symbol.map(undPrices))
+
+        df_chains = df_chains[['symbol', 'undId', 'expiry', 'dte', 'strike', 'lot', 'undPrice']]
+    
+    else: # for NSE
+        
+        url = 'https://www.nseindia.com/content/fo/fo_mktlots.csv'
+        req = requests.get(url)
+
+        data = StringIO(req.text)
+        lots_df = pd.read_csv(data)
+
+        lots_df = lots_df[list(lots_df)[1:5]]
+
+        # strip whitespace from columns and make it lower case
+        lots_df.columns = lots_df.columns.str.strip().str.lower() 
+
+        # strip all string contents of whitespaces
+        lots_df = lots_df.applymap(lambda x: x.strip() if type(x) is str else x)
+
+        # remove 'Symbol' row
+        lots_df = lots_df[lots_df.symbol != 'Symbol']
+
+        # melt the expiries into rows
+        lots_df = lots_df.melt(id_vars=['symbol'], var_name='expiryM', value_name='lot').dropna()
+
+        # remove rows without lots
+        lots_df = lots_df[~(lots_df.lot == '')]
+
+        # convert expiry to period
+        lots_df = lots_df.assign(expiryM=pd.to_datetime(lots_df.expiryM, format='%b-%y').dt.to_period('M').astype('str'))
+
+        # convert lots to integers
+        lots_df = lots_df.assign(lot=pd.to_numeric(lots_df.lot, errors='coerce'))
+
+        # convert & to %26
+        lots_df = lots_df.assign(symbol=lots_df.symbol.str.replace('&', '%26'))
 
         # convert symbols - friendly to IBKR
-        df_tp = df_tp.assign(symbol=df_tp.symbol.str.slice(0,9))
-        ntoi = {'M&M': 'MM', 'M&MFIN': 'MMFIN', 'L&TFH': 'LTFH', 'NIFTY': 'NIFTY50'}
-        df_tp.symbol = df_tp.symbol.replace(ntoi)
-        df_symbols = df_tp
+        lots_df = lots_df.assign(symbol=lots_df.symbol.str.slice(0,9))
+        ntoi = {'M%26M': 'MM', 'M%26MFIN': 'MMFIN', 'L%26TFH': 'LTFH', 'NIFTY': 'NIFTY50'}
+        lots_df.symbol = lots_df.symbol.replace(ntoi)
 
-        # set the types for indexes as IND
-        ix_symbols = ['NIFTY50', 'BANKNIFTY', 'NIFTYIT']
+        # !!! Start of DATA LIMITER !!!
+        # tempsymbols = ['ACC', 'INFY', 'RELIANCE'] + ind_symbols
+        # lots_df = lots_df.loc[lots_df.symbol.isin(tempsymbols), :].reset_index(drop=True)
+        # ...End of DATA LIMITER !!!...
 
-        # !!! DATA LIMITER !!! Get 4 symbols. 2 Equities and 2 Indexes
-    #     df_symbols = pd.concat([df_symbols[:2], df_symbols[df_symbols.symbol.isin(ix_symbols[:2])]]).reset_index(drop=True)
+        # get the underlying prices
+        symbols = lots_df.symbol.unique()
 
-        # build the underlying contracts
-        scrips = list(df_symbols.symbol)
+        ind_symbols = ['NIFTY50', 'BANKNIFTY', 'NIFTYIT']
 
-        instruments = [Index(symbol=s, exchange=exchange) if s in ix_symbols else Stock(symbol=s, exchange=exchange) for s in scrips]
+        # Get the stock and index contracts
+        stocks = [Stock(s, market, currency) for s in symbols if s not in ind_symbols]
+        indexes = [Index(s, market, currency) for s in ind_symbols]
+
+        stock_contracts = ib.qualifyContracts(*stocks)
+        index_contracts = ib.qualifyContracts(*indexes)
+
+        contracts = stock_contracts + index_contracts
+
+        # get the conIds
+        symConDict = {u.symbol: u.conId for u in contracts}
+        conSymDict = {u.conId: u.symbol for u in contracts}
+
+        # get the prices
+        async def undpricecoro(cs):
+            tasks = [ib.reqTickersAsync(c) for c in cs]
+            return await asyncio.gather(*tasks)
+
+        try:
+            undpList = [u for undp in ib.run(undpricecoro(contracts), timeout = 15) for u in undp]
+        except Exception as e:
+            print(f"ATTENTION: The error {e} appeared while getting undPrice tickers")
+
+        undPrices = {u.contract.symbol: u.marketPrice() for u in undpList}
+
+        lots_df = lots_df.assign(undId=lots_df.symbol.map(symConDict), undPrice=lots_df.symbol.map(undPrices))
+
+        # get the chains
+        async def chains_coro(und_contracts):
+            '''Get the chains for underlyings
+            Arg: (und_contracts) as a list
+            Returns: awaits of reqSecDefOptPramsAsyncs'''
+            ch_tasks = [ib.reqSecDefOptParamsAsync(underlyingSymbol=c.symbol, futFopExchange='', 
+                                     underlyingConId=c.conId, underlyingSecType=c.secType)
+                                     for c in und_contracts]
+            return await asyncio.gather(*ch_tasks)
+
+        ch = ib.run(chains_coro(contracts))
+
+        chs = [b for a in ch for b in a]
+
+        chains = {c.underlyingConId: c for c in chs}
+
+        sek = {b for a in [list(product([k], m.expirations, m.strikes)) for k, m in chains.items()] for b in a}
+
+        dfc = pd.DataFrame(list(sek), columns=['undId', 'expiry', 'strike'])
+        dfc = dfc.assign(dte=[(util.parseIBDatetime(dt)-datetime.datetime.now().date()).days for dt in dfc.expiry])
+        dfc = dfc.assign(undId=dfc.undId.astype('int32'))
+
+        dfc = dfc.assign(symbol=dfc.undId.map(conSymDict))
+
+        dfc = dfc.assign(expiryM=pd.to_datetime(dfc.expiry).dt.strftime('%Y-%m').astype('str'))
+
+        ix_chains = dfc.set_index(['symbol', 'undId', 'expiryM'])
+        ix_lots = lots_df.set_index(['symbol', 'undId', 'expiryM'])
+
+        df_chains = ix_chains.join(ix_lots).reset_index().drop('expiryM',1)
         
-    # qualify contracts  
-    und_contracts = ib.qualifyContracts(*instruments)
+    return (df_chains, contracts)
         
-    return und_contracts
 
 #_____________________________________
 
