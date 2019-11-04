@@ -407,7 +407,7 @@ if __name__ == '__main__':
         # get targets from the pickle if fresh, else generate
         tgt_hrs = (datetime.now() - datetime.fromtimestamp(path.getmtime(fspath+'targets.pkl'))).total_seconds()/60/60
         if tgt_hrs > 3: # needs target regeneration
-            df_targets = make_targets().reset_index(drop=True) # regenerate targets
+            df_targets = make_targets(margin_breached).reset_index(drop=True) # regenerate targets
         else:
             df_targets=pd.read_pickle(fspath+'targets.pkl').reset_index(drop=True) 
             
