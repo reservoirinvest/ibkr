@@ -1,11 +1,10 @@
 {
 	"common": {
-		"market": "snp",
+		"market": "nse",
 		"user": "kashi",
 		"account": "live",
 		"host": "127.0.0.1",
 		"blk": 50,
-		"nBand": 2,
 		"callRise": true,
 		"putFall": false,
 		"onlyPuts": false,
@@ -15,7 +14,7 @@
 			"PreSubmitted",
 			"Submitted"
 		],
-		"coverSD": 1.1
+		"coverSD": 1
 	},
 	"nse": {
 		"currency": "INR",
@@ -24,8 +23,9 @@
 			"LIVE": 3000,
 			"PAPER": 3001
 		},
-		"callstdmult": 3.5,
-		"putstdmult": 2.9,
+		"callstdmult": 3,
+		"putstdmult": 2.75,
+		"nBand": 3,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
@@ -66,13 +66,14 @@
 			"PAPER": 2301
 		},
 		"callstdmult": 4,
-		"putstdmult": 3.2,
+		"putstdmult": 3.1,
+		"nBand": 2,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 1.8,
+		"minexpRom": 1.25,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [

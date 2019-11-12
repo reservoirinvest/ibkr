@@ -27,13 +27,13 @@ def get_acc_summary(ib):
 
 	return pnldict
 
-with IB().connect('127.0.0.1', 1300, 0) as ib:
-	# pnldict = get_acc_summary(ib)
+with IB().connect('127.0.0.1', 3000, 0) as ib:
+	pnldict = get_acc_summary(ib)
 	acct = ib.managedAccounts()[0]
 	pnl = ib.reqPnL(acct)
 	print(pnl)
 	
-# # print(pnldict)
+print(pnldict)
 
 # import PyQt5.QtWidgets as qt
 

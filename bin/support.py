@@ -400,7 +400,7 @@ def get_chains(ib, market):
             return await asyncio.gather(*tasks)
 
         try:
-            undpList = [u for undp in ib.run(undpricecoro(contracts), timeout = 15) for u in undp]
+            undpList = [u for undp in ib.run(undpricecoro(contracts), timeout = 25) for u in undp]
         except Exception as e:
             print(f"ATTENTION: The error {e} appeared while getting undPrice tickers")
 
