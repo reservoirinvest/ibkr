@@ -36,7 +36,7 @@ The programs require the following environment set up
     
     
   4. Install jupyter+numpy+pandas with the command:
-  > *pip3 install -U jupyter numpy pandas requests lxml html5lib BeautifulSoup4*
+  > *pip3 install -U jupyter numpy pandas requests lxml html5lib BeautifulSoup4 quart*
   
      for re-installing / upgrade the command is:
   > *pip3 install --force-reinstall --upgrade jupyter*
