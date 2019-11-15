@@ -103,7 +103,7 @@ For activities such as:
  
  Data is stored in its own folder in the following structure:
   - *log* containing log files
-  - *[market-name]* containing market specific pickles. for e.g. <snp> | <nse>
+  - *[market-name]* containing market specific pickles. for e.g. &lt;snp&gt; | &lt;nse&gt;
  
  ---
  
