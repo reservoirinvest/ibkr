@@ -12,6 +12,7 @@ The entire dining experience takes 1 hour
 
 # Pseudocode for asyncio
 
+```python
 async def serve_table(table_number):
     await get_menus()
     print('Welcome. Please set at table.', table_number, 'Here are your menus.')
@@ -23,4 +24,4 @@ async def serve_table(table_number):
     print('Table', table_number, 'Here is your check')
     await get_payment()
     print('Thanks for visiting us! (table', table_number', ')')
-
+```
