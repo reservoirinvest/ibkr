@@ -1,8 +1,10 @@
 # Introduction
 
 * This set of programs attempts to set up a dynamic framework in IB for two markets:
- - USA (SNP)
- - India (NSE)
+  - USA (SNP)
+  - India (NSE)
+
+ ...with a sincere acknowledgement to [ib_insync](https://rawgit.com/erdewit/ib_insync/master/docs/html/readme.html)
 
 # Concept and Structure
 The overall concept and structure is as below:
@@ -10,10 +12,11 @@ The overall concept and structure is as below:
 
 # Requirements
 
-The programs require the following environment set up 
+The programs require the following environment to be set up:
  - for [python](https://www.python.org/downloads/)
- - using [Jupyter Notebook](http://jupyter.org/install) as IDE
-    - [Anaconda distribution](https://www.anaconda.com/distribution/) can be used instead of raw jupyter.
+ - using [Jupyter Notebook](http://jupyter.org/install) as IDE (Covered in Setup Steps #4 below)
+    - [Anaconda distribution](https://www.anaconda.com/distribution/) can be used instead of jupyter installation from CLI
+    - [Microsoft Visual Studio Code](https://code.visualstudio.com/) with CLI-installed jupyter is another IDE alternative
  - to run [IBKR TWS API]( https://interactivebrokers.github.io/) in C:\ root for Windows
  - on [TWS](https://www.interactivebrokers.com.hk/en/index.php?f=16042) or [IB Gateway](https://www.interactivebrokers.com.hk/en/index.php?f=16457)
  - with [IB_insync](https://rawgit.com/erdewit/ib_insync/master/docs/html/readme.html#) library
@@ -21,11 +24,9 @@ The programs require the following environment set up
  
  **Note:** The instructions are for Windows 10. The same process can be used for other OS - such as Ubuntu and MacOS.
  
-## Setup
+## Setup steps
 
-* This section is borrowed from [ib_insync](https://rawgit.com/erdewit/ib_insync/master/docs/html/readme.html)
-
-  1. Install [python](https://www.python.org/downloads/) latest release (3.7.x at the time of this writing)
+  1. Install [python](https://www.python.org/downloads/) latest release
   
   
   2. Install ib_insyc with the command: 
@@ -86,10 +87,10 @@ The support programs contain two types of modules.
 
 ### Core functions
 Performing functions such as 
- - getting the option chains, 
- - ohlcs, 
- - sizing the options based on variables.json parameters, 
- - building targets (SELLs), closure (BUYs) and covers (for assigned long and short stocks).
+ - getting the option chains 
+ - ohlcs
+ - sizing the options based on variables.json parameters
+ - building targets (SELLs), closure (BUYs) and covers (for assigned long and short stocks)
  - setting 'harvest' prices
  - getting remaining quantities
  
