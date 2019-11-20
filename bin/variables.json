@@ -1,6 +1,6 @@
 {
 	"common": {
-		"market": "snp",
+		"market": "nse",
 		"user": "kashi",
 		"account": "live",
 		"host": "127.0.0.1",
@@ -24,14 +24,14 @@
 			"PAPER": 3001
 		},
 		"callstdmult": 3,
-		"putstdmult": 2.75,
+		"putstdmult": 3.1,
 		"nBand": 3,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 1,
+		"minexpRom": 1.45,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
 		"blacklist": [

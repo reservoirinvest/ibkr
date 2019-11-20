@@ -1,5 +1,5 @@
 # Reference
-[Ref: Uche Ogbuji's excellent tutorial on Coroutines and asyncio](https://developer.ibm.com/tutorials/ba-on-demand-data-python-3/)
+* [Uche Ogbuji's excellent tutorial on Coroutines and asyncio](https://developer.ibm.com/tutorials/ba-on-demand-data-python-3/)
 
 # Scenario
 There is a tiny restaurant. With three tables and only one server and the following process:

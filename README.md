@@ -38,7 +38,7 @@ The programs require the following environment to be set up:
     
     
   4. Install jupyter and its dependencies with the following command:
-  > *pip3 install -U jupyter numpy pandas requests lxml html5lib BeautifulSoup4 quart*
+  > *pip3 install -U jupyter numpy pandas requests lxml html5lib BeautifulSoup4 quart CairoSVG*
   
  - Some packages like [pywinpty](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pywinpty) in Windows may fail during installation of jupyter in command line interface. There are two options to resolve this:
     - Manually install the packages from [Christoph Gohlke's Windows Binary for PEP](https://www.lfd.uci.edu/~gohlke/pythonlibs/)
