@@ -7,7 +7,7 @@ nse = 3000
 snp = 1300
 cid = 0
 
-ib = IB().connect(host, nse, 2)
+ib = IB().connect(host, snp, 2)
 
 async def pnlcoro(ib):
     '''Gets the pnl object'''
