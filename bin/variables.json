@@ -66,14 +66,18 @@
 			"PAPER": 2301
 		},
 		"callstdmult": 4,
-		"putstdmult": 3.1,
+		"putstdmult": 3.2,
 		"nBand": 2,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
+<<<<<<< HEAD
 		"minexpRom": 1.85,
+=======
+		"minexpRom": 1.75,
+>>>>>>> ce5cdd107a7c53670869b51f16d9a84e34f58811
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [
@@ -83,6 +87,6 @@
 			"GOOGL"
 		],
 		"snp_assignment_limit": 50000,
-		"upthecoverfactor": 3
+		"upthecoverfactor": 2
 	}
 }
