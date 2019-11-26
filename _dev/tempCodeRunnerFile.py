@@ -1,0 +1,2 @@
+
+host = data['common']['host']
