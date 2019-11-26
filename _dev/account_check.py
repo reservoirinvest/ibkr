@@ -13,12 +13,8 @@ host = data['common']['host']
 port = data[market]['port']
 cid = 0
 
-<<<<<<< HEAD
 with IB().connect(host=host, port=port, clientId=cid) as ib:
     print(ib.isConnected())
-=======
-ib = IB().connect(host, snp, 2)
->>>>>>> ce5cdd107a7c53670869b51f16d9a84e34f58811
 
 async def pnlcoro(ib):
     '''Gets the pnl object'''
