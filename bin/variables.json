@@ -1,6 +1,6 @@
 {
 	"common": {
-		"market": "snp",
+		"market": "nse",
 		"user": "kashi",
 		"account": "live",
 		"host": "127.0.0.1",
@@ -14,7 +14,7 @@
 			"PreSubmitted",
 			"Submitted"
 		],
-		"coverSD": 0.8
+		"coverSD": 1
 	},
 	"nse": {
 		"currency": "INR",
@@ -24,14 +24,14 @@
 			"PAPER": 3001
 		},
 		"callstdmult": 3,
-		"putstdmult": 3.15,
+		"putstdmult": 3.5,
 		"nBand": 3,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 1.8,
+		"minexpRom": 1.15,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
 		"blacklist": [
@@ -73,11 +73,7 @@
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-<<<<<<< HEAD
-		"minexpRom": 1.85,
-=======
-		"minexpRom": 1.75,
->>>>>>> ce5cdd107a7c53670869b51f16d9a84e34f58811
+		"minexpRom": 1.9,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [
@@ -87,6 +83,6 @@
 			"GOOGL"
 		],
 		"snp_assignment_limit": 50000,
-		"upthecoverfactor": 2
+		"upthecoverfactor": 3
 	}
 }
