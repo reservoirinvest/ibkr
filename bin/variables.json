@@ -23,15 +23,15 @@
 			"LIVE": 3000,
 			"PAPER": 3001
 		},
-		"callstdmult": 3,
-		"putstdmult": 3.5,
-		"nBand": 3,
+		"callstdmult": 3.25,
+		"putstdmult": 3.8,
+		"nBand": 2,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 1.15,
+		"minexpRom": 1.3,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
 		"blacklist": [
@@ -56,7 +56,7 @@
 	},
 	"snp": {
 		"currency": "USD",
-		"avlblMarginlmt": 25000,
+		"avlblMarginlmt": 50000,
 		"kashi": {
 			"LIVE": 1300,
 			"PAPER": 1301
@@ -66,14 +66,14 @@
 			"PAPER": 2301
 		},
 		"callstdmult": 4,
-		"putstdmult": 3.2,
-		"nBand": 2,
+		"putstdmult": 3.8,
+		"nBand": 1,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 1.9,
+		"minexpRom": 2.2,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [
