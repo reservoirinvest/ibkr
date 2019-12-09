@@ -1,12 +1,10 @@
-# ignore all files except the ones below with !
+# ignore the following files except the ones below with !
 .ipynb_checkpoints
 zzJunk
 *.xlsx
 *.csv
-*.log
 .vs*
-
-
+tempCodeRunnerFile.py
 
 # ignore sub-folders
 **/bin/.vs*
@@ -14,6 +12,8 @@ zzJunk
 **/bin/__pycache__/
 **/zArchives
 **/data/log/
+**/data/nse/
+**/data/snp/
 
 
 # But do not ignore these files

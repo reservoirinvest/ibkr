@@ -336,12 +336,12 @@ def get_chains(ib, market):
         
         url = 'https://www.nseindia.com/content/fo/fo_mktlots.csv'
 
-        # req = requests.get(url)
-        # data = StringIO(req.text)
+        req = requests.get(url)
+        data = StringIO(req.text)
 
-        # In case requests does not work, use the following 
-        # after commenting out the request snd data lines above
-        data = 'C:\\Users\\kashir\\Downloads\\fo_mktlots.csv'
+        # # In case requests does not work, use the following 
+        # # after commenting out the request snd data lines above
+        # data = 'C:\\Users\\kashir\\Downloads\\fo_mktlots.csv'
         
         lots_df = pd.read_csv(data)
 

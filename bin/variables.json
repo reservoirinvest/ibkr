@@ -1,6 +1,6 @@
 {
 	"common": {
-		"market": "nse",
+		"market": "snp",
 		"user": "kashi",
 		"account": "live",
 		"host": "127.0.0.1",
@@ -80,7 +80,8 @@
 			"VXX",
 			"P",
 			"TSRO",
-			"GOOGL"
+			"GOOGL",
+			"CRM"
 		],
 		"snp_assignment_limit": 50000,
 		"upthecoverfactor": 3
