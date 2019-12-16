@@ -38,7 +38,7 @@ async def get_pnlAsync(market):
 
     host = data['common']['host']
     port = data[market]['port']
-    cid = 0
+    cid = 1
 
     # ...generate PnL with funds
     with await IB().connectAsync(host=host, port=port, clientId=cid) as ib:
@@ -48,6 +48,6 @@ async def get_pnlAsync(market):
 
 if __name__ == '__main__':
 
-    output = IB().run(get_pnlAsync('nse'))
+    output = IB().run(get_pnlAsync('snp'))
 
     print(output)

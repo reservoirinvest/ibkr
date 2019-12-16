@@ -1,6 +1,6 @@
 {
 	"common": {
-		"market": "snp",
+		"market": "nse",
 		"user": "kashi",
 		"account": "live",
 		"host": "127.0.0.1",
@@ -24,14 +24,14 @@
 			"PAPER": 3001
 		},
 		"callstdmult": 3.25,
-		"putstdmult": 3.1,
+		"putstdmult": 3.25,
 		"nBand": 2,
 		"exchange": "NSE",
 		"fspath": "../data/nse/",
 		"logpath": "../data/log/nse_",
 		"mindte": 2,
 		"maxdte": 60,
-		"minexpRom": 0.95,
+		"minexpRom": 1.35,
 		"minexpOptPrice": 0.25,
 		"prec": 0.05,
 		"blacklist": [
@@ -66,14 +66,14 @@
 			"PAPER": 2301
 		},
 		"callstdmult": 4.2,
-		"putstdmult": 4.1,
+		"putstdmult": 4,
 		"nBand": 1,
 		"exchange": "SMART",
 		"fspath": "../data/snp/",
 		"logpath": "../data/log/snp_",
 		"mindte": 5,
 		"maxdte": 60,
-		"minexpRom": 2.3,
+		"minexpRom": 1.65,
 		"minexpOptPrice": 0.15,
 		"prec": 0.01,
 		"blacklist": [

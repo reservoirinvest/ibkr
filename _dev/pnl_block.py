@@ -2,7 +2,7 @@
 from ib_insync import IB
 import json
 
-market = 'nse'
+market = 'snp'
 
 # ...variables initialization
 with open('var.json', 'r') as fp:
@@ -10,7 +10,7 @@ with open('var.json', 'r') as fp:
 
 host = data['common']['host']
 port = data[market]['port']
-cid = 0
+cid = 1
 
 # ...connect to IB
 ib = IB().connect(host=host, port=port, clientId=cid)

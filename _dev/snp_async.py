@@ -6,7 +6,7 @@ from itertools import product
 
 import time
 from math import erf, sqrt
-from ib_insync import IB, Stock, Option, util
+from ib_insync import IB, Stock, Option, util, Order
 
 import asyncio
 
@@ -61,10 +61,14 @@ async def get_symbols():
 
     return df_symbols
 
-async def qual_contract(ib, contract)
 
 async def get_contract(ib, symbol):
     return await ib.qualifyContractsAsync(Stock(symbol, "SMART", "USD"))
+
+
+async def qual_contract(ib, contract):
+    return await ib.qualifyContractsAsync(contract)
+
 
 async def get_ohlc(ib, contract):
     ohlc = await ib.reqHistoricalDataAsync(
@@ -78,23 +82,26 @@ async def get_ohlc(ib, contract):
 
     # reverse sort to have latest date on top
     df_ohlc = util.df(ohlc).sort_index(ascending=False).reset_index(drop=True)
-    
+
     df_ohlc.insert(0, 'symbol', contract.symbol)
 
     df_ohlc["rise"] = [
-        df_ohlc["close"].rolling(i).apply(lambda x: x[0] - x[-1], raw=True).max()
+        df_ohlc["close"].rolling(i).apply(
+            lambda x: x[0] - x[-1], raw=True).max()
         for i in range(1, len(df_ohlc) + 1)
     ]
     df_ohlc["rise"] = df_ohlc.rise.abs()
 
     df_ohlc["fall"] = [
-        df_ohlc["close"].rolling(i).apply(lambda x: x[0] - x[-1], raw=True).min()
+        df_ohlc["close"].rolling(i).apply(
+            lambda x: x[0] - x[-1], raw=True).min()
         for i in range(1, len(df_ohlc) + 1)
     ]
     df_ohlc["fall"] = df_ohlc.fall.abs()
 
     df_ohlc = df_ohlc.assign(sd=df_ohlc.close.expanding(1).std(ddof=0))
-    df_ohlc.sd = df_ohlc.sd.expanding(1).max() # roll the standard deviation upwards
+    # roll the standard deviation upwards
+    df_ohlc.sd = df_ohlc.sd.expanding(1).max()
 
     return df_ohlc
 
@@ -111,23 +118,26 @@ async def get_chain(ib, contract):
         underlyingConId=contract.conId,
     )
 
+
 async def get_margin(ib, contract, order):
-    return await ib.whatIfOrder(contract, order)
+    return await ib.whatIfOrderAsync(contract, order)
 
 if __name__ == "__main__":
-    
+
     start = datetime.datetime.now()
     print(f"started at {time.strftime('%X')}")
 
+    util.logToFile(data[market]["logpath"]+'main.log')
+
     with IB().connect(host=host, port=port, clientId=cid) as ib:
         symbols = ib.run(get_symbols()).symbol
-        symbols = ["CELG", "GOOG"]
+        # symbols = ["CELG", "LIN"]
 
         contracts = [ib.run(get_contract(ib, symbol)) for symbol in symbols]
         contracts = [c for cs in contracts for c in cs if c]
-        
+
         for c in contracts:
-            
+
             df_ohlc = ib.run(get_ohlc(ib, c))
 
             undPrice = ib.run(get_tick(ib, c))[0].marketPrice()
@@ -135,32 +145,43 @@ if __name__ == "__main__":
             chains = {c.symbol: ib.run(get_chain(ib, c))[0]}
 
             sek = {b for a in [list(product([k], m.expirations, m.strikes))
-                            for k, m in chains.items()] for b in a}
+                               for k, m in chains.items()] for b in a}
 
-            dfc = pd.DataFrame(list(sek), columns=['symbol', 'expiry', 'strike'])
+            dfc = pd.DataFrame(list(sek), columns=[
+                               'symbol', 'expiry', 'strike'])
             dfc = dfc.assign(dte=[(util.parseIBDatetime(
-                dt)-datetime.datetime.now().date()).days for dt in dfc.expiry])    
-            dfc = dfc[dfc.dte <= data['common']['maxdte']] # Limit to max and min dte
+                dt)-datetime.datetime.now().date()).days for dt in dfc.expiry])
+
+            # Limit to max and min dte
+            dfc = dfc[dfc.dte <= data['common']['maxdte']]
             dfc = dfc[dfc.dte >= data['common']['mindte']]
-            dfc = dfc.join(dfc.dte.apply(lambda x: df_ohlc.iloc[x][['rise', 'fall', 'sd']])) # integrate rise, fall and stdev
+
+            # integrate rise, fall and stdev
+            dfc = dfc.join(dfc.dte.apply(
+                lambda x: df_ohlc.iloc[x][['rise', 'fall', 'sd']]))
 
             # remove the calls and puts whose strike is in the threshold of st dev
             dfc['undPrice'] = undPrice
-            dfc = dfc.assign(right=np.where(dfc.strike >= dfc.undPrice, 'C', 'P'))
-            c_mask = (dfc.right == 'C') & (dfc.strike > dfc.undPrice + data['common']['callstdmult']*dfc.sd)
-            p_mask = (dfc.right == 'P') & (dfc.strike < dfc.undPrice - data['common']['putstdmult']*dfc.sd)
+            dfc = dfc.assign(right=np.where(
+                dfc.strike >= dfc.undPrice, 'C', 'P'))
+            c_mask = (dfc.right == 'C') & (
+                dfc.strike > dfc.undPrice + data['common']['callstdmult']*dfc.sd)
+            p_mask = (dfc.right == 'P') & (
+                dfc.strike < dfc.undPrice - data['common']['putstdmult']*dfc.sd)
             dfc = dfc[c_mask | p_mask].reset_index(drop=True)
 
             # Based on filter selection in json weed out...
-            dfc = dfc.assign(strikeRef = np.where(dfc.right == 'P', 
-                                                dfc.undPrice-dfc.fall, 
+            dfc = dfc.assign(strikeRef=np.where(dfc.right == 'P',
+                                                dfc.undPrice-dfc.fall,
                                                 dfc.undPrice+dfc.rise))
 
             if data['common']['callRise']:
-                dfc = dfc[~((dfc.right == 'C') & (dfc.strike < dfc.strikeRef))].reset_index(drop=True)
+                dfc = dfc[~((dfc.right == 'C') & (
+                    dfc.strike < dfc.strikeRef))].reset_index(drop=True)
 
             if data['common']['putFall']:
-                dfc = dfc[~((dfc.right =='P') & (dfc.strike > dfc.strikeRef))].reset_index(drop=True)
+                dfc = dfc[~((dfc.right == 'P') & (
+                    dfc.strike > dfc.strikeRef))].reset_index(drop=True)
 
             if data['common']['onlyPuts']:
                 dfc = dfc[dfc.right == 'P'].reset_index(drop=True)
@@ -170,24 +191,50 @@ if __name__ == "__main__":
             gb = dfc.groupby(['right'])
 
             if 'C' in [k for k in gb.indices]:
-                df_calls = gb.get_group('C').reset_index(drop=True).sort_values(['symbol', 'dte', 'strike'], ascending=[True, True, True])
+                df_calls = gb.get_group('C').reset_index(drop=True).sort_values(
+                    ['symbol', 'dte', 'strike'], ascending=[True, True, True])
                 df_calls = df_calls.groupby(['symbol', 'dte']).head(nBand)
             else:
                 df_calls = pd.DataFrame([])
 
             if 'P' in [k for k in gb.indices]:
-                df_puts = gb.get_group('P').reset_index(drop=True).sort_values(['symbol', 'dte', 'strike'], ascending=[True, True, False])
+                df_puts = gb.get_group('P').reset_index(drop=True).sort_values(
+                    ['symbol', 'dte', 'strike'], ascending=[True, True, False])
                 df_puts = df_puts.groupby(['symbol', 'dte']).head(nBand)
             else:
-                df_puts =  pd.DataFrame([])
+                df_puts = pd.DataFrame([])
 
             dfc = pd.concat([df_puts, df_calls]).reset_index(drop=True)
 
             # qualify the options
-            opts = [Option(i.symbol, i.expiry, i.strike, i.right, data[market]['exchange']) for i in dfc[['symbol', 'expiry', 'strike', 'right']].itertuples()]
+            opts = [Option(i.symbol, i.expiry, i.strike, i.right, data[market]['exchange'])
+                    for i in dfc[['symbol', 'expiry', 'strike', 'right']].itertuples()]
+            qual_opts = [ib.run(qual_contract(ib, opt)) for opt in opts]
+            qual_opts = [q for q in qual_opts if q]
+            qual_opts = [o for q in qual_opts for o in q]
 
-    print(opts)
-    
+            # get the qualified option prices
+            optPrice = {q.conId: ib.run(
+                get_tick(ib, q))[0].marketPrice() for q in qual_opts}
+
+            # get the margins
+            mgn_ord = Order(action='SELL', orderType='MKT', totalQuantity=1,
+                            whatIf=True)
+            optwim = {q.conId: ib.run(get_margin(
+                ib, q, mgn_ord)) for q in qual_opts}
+
+            optMargin = {k: v.maintMarginChange for k, v in optwim.items()}
+            optComm = {k: v.maxCommission for k, v in optwim.items()}
+
+            df_qo = util.df(qual_opts).iloc[:, 1:6].rename(columns={'lastTradeDateOrContractMonth': 'expiry'})
+
+            df_qo = df_qo.assign(optPrice=[optPrice[cid] for cid in df_qo.conId], optMargin=[optMargin[cid] for cid in df_qo.conId], optComm = [optComm[cid] for cid in df_qo.conId])
+
+            dfc = dfc.set_index(['symbol', 'expiry', 'strike', 'right']).join(df_qo.set_index(['symbol', 'expiry', 'strike', 'right'])).reset_index()
+
+    dfc.to_pickle(data[market]["fspath"]+'targets.pkl')
+    print(dfc)
+
     end = datetime.datetime.now()-start
-    print(f"finished at {time.strftime('%X')} in {end.microseconds*1e-6:.2f} seconds")
-
+    print(
+        f"finished at {time.strftime('%X')} in {end.microseconds*1e-6:.2f} seconds")
