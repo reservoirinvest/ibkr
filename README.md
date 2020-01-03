@@ -46,7 +46,8 @@ The programs require the following environment to be set up:
   
      for re-installing / upgrade the command is:
   > *pip3 install --force-reinstall --upgrade jupyter*
-      
+    
+ - Lately, there is a compatibility error in python v3.8 caused by <em>tornado</em> package's asyncio feature. Workaround for this is [here](https://stackoverflow.com/a/58430041).
       
   5. To get Jupyter recognize TWS API, go to the *C:\TWS API\source\pythonclient* folder and run *python setup.py install*
     
