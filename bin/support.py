@@ -339,8 +339,8 @@ def get_chains(ib, market):
         req = requests.get(url)
         data = StringIO(req.text)
 
-        # # In case requests does not work, use the following 
-        # # after commenting out the request snd data lines above
+        # In case requests does not work, use the following 
+        # after commenting out the request snd data lines above
         # data = 'C:\\Users\\kashir\\Downloads\\fo_mktlots.csv'
         
         lots_df = pd.read_csv(data)
@@ -715,7 +715,6 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
             exit() # Exit the interpreter
         raise StopExecution
 
-    # get the portfolio
     pf = portf(ib)
 
     pf = pf.assign(shares=np.where(pf.secType == 'STK', pf.position, pf.position*100)) # get shares
@@ -818,31 +817,31 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
 
     # get the options closest to the strikeRef
     df3 = df2.groupby(['symbol', 'dte'], as_index=False) \
-                     .apply(lambda g: g.iloc[abs(g.strike - g.strikeRef) \
-                     .argsort()[:2]]) \
-                     .reset_index(drop=True)
+                        .apply(lambda g: g.iloc[abs(g.strike - g.strikeRef) \
+                        .argsort()[:2]]) \
+                        .reset_index(drop=True)
 
     # choose the minimum dte for the covers
     df4 = df3.loc[df3.groupby(['right', 'symbol']).dte.idxmin()]
 
     # get the target covered call dataframe
     mask = (df4.right == 'C') & (df4.symbol.isin(covcalls.keys())) | \
-           (df4.right == 'P') & (df4.symbol.isin(covputs.keys()))
+            (df4.right == 'P') & (df4.symbol.isin(covputs.keys()))
     df5 = df4[mask]
 
     # determine the quantities for covered calls/ puts
     mapper = {'C': covcalls,
-              'P': covputs}
+                'P': covputs}
 
     df5 = df5.assign(qty=df5.groupby('right').symbol.apply(lambda s: s.map(mapper[s.name])/100))
 
     # remove unnecessary calls and puts (that don't have underlying STK)
     df_covered = df5[((df5.right == 'C') & df5.symbol.isin(covcalls.keys())) | \
-                     ((df5.right == 'P') & df5.symbol.isin(covputs.keys()))].reset_index(drop=True)
+                        ((df5.right == 'P') & df5.symbol.isin(covputs.keys()))].reset_index(drop=True)
 
 
 
-   # change the date of covered expiry to the coming week if dte <= 1
+    # change the date of covered expiry to the coming week if dte <= 1
     newExp = df_covered.expiry.apply(lambda d: util.formatIBDatetime(util.parseIBDatetime(str(d)) + datetime.timedelta(days=7))[:8])
 
     mask = df_covered.dte <= 1
@@ -851,14 +850,14 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
     # get the option prices
     covopts = ib.qualifyContracts(*[Option(c.symbol, c.expiry, c.strike, c.right, exchange) for i, c in df_covered.iterrows()])
 
-#     # asyncio coroutine
-#     async def coro():
-#         tasks = [ib.reqTickersAsync(s) for s in covopts]
-#         return await asyncio.gather(*tasks)
-
-#     covticks = [c for r in ib.run(coro()) for c in r]
-
     if covopts:
+
+        # handle missing covopts in df_covered (if any)
+        missing_covopts = [s for s in df_covered.symbol if s not in [c.symbol for c in covopts]]
+        if missing_covopts:
+            print(f"\ncovopts is missing for {missing_covopts}. Please manually place the covers.\n")
+            df_covered = df_covered[~df_covered.symbol.isin(missing_covopts)]
+
         covticks = ib.reqTickers(*covopts)
         df_covered1 = df_covered.assign(optId = [i.conId for i in covopts])
 
@@ -874,7 +873,7 @@ def covers(ib, market, df_chains, df_ohlcsd, fspath):
         
     else:
         df_covered4 = pd.DataFrame([])
-    
+
     df_covered4.to_pickle(fspath+'writecovers.pkl')
     
     return df_covered4
